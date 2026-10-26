@@ -381,7 +381,13 @@ cvarTable_t gameCvarTable[] =
 	{ &g_medicChargeTime,                 "g_medicChargeTime",                 "45000",                      CVAR_SERVERINFO | CVAR_LATCH,                    0, qfalse, qtrue  },
 	{ &g_engineerChargeTime,              "g_engineerChargeTime",              "30000",                      CVAR_SERVERINFO | CVAR_LATCH,                    0, qfalse, qtrue  },
 	{ &g_fieldopsChargeTime,              "g_fieldopsChargeTime",              "40000",                      CVAR_SERVERINFO | CVAR_LATCH,                    0, qfalse, qtrue  },
-	{ &g_soldierChargeTime,               "g_soldierChargeTime",               "20000",                      CVAR_SERVERINFO | CVAR_LATCH,                    0, qfalse, qtrue  },
+	// Bombas server-side mapconfigs adjust Soldier/Panzer charge time per map.
+    // CVAR_LATCH defers settings applied by g_mapConfigs until the *next* map,
+    // causing Panzer War to remain at 20s on its own map. This CVAR already has
+    // a live change callback in G_UpdateCvars() that updates level charge times
+    // and CS_CHARGETIMES, so let the setting take effect immediately.
+    // Protocol, client-side player movement, and client binaries remain stock.
+    { &g_soldierChargeTime,               "g_soldierChargeTime",               "20000",                      CVAR_SERVERINFO,                                 0, qfalse, qtrue  },
 	{ &g_covertopsChargeTime,             "g_covertopsChargeTime",             "30000",                      CVAR_SERVERINFO | CVAR_LATCH,                    0, qfalse, qtrue  },
 	{ &g_landminetimeout,                 "g_landminetimeout",                 "1",                          CVAR_ARCHIVE,                                    0, qfalse, qtrue  },
 
