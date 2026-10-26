@@ -3027,12 +3027,13 @@ void CG_AddToBannerPrint(const char *str)
  * Cmd_Argc() / Cmd_Argv()
  */
 /* Bombas ET: Legacy client overlay - compiled into the standard downloaded cgame module. */
-#define BOMBAS_MAX_FRAMES 24
-#define BOMBAS_CACHE_ENTRIES 6
+#define BOMBAS_MAX_FRAMES 720  // 60 s at 12 FPS; bounded for older hardware
+#define BOMBAS_CACHE_ENTRIES 2
 
 typedef struct {
     int start, count, fps, position, width, height;
-    int sourceWidth, sourceHeight, keepRatio, safePct, lastTime;
+    int sourceWidth, sourceHeight, keepRatio, safePct, lastTime, captionPosition;
+    char caption[161];
     qhandle_t frames[BOMBAS_MAX_FRAMES];
 } bombasEvent_t;
 
@@ -3046,15 +3047,17 @@ typedef struct {
 static bombasEvent_t bombasEvent;
 static bombasClipCache_t bombasClips[BOMBAS_CACHE_ENTRIES];
 static int bombasNextClip;
+static char bombasEventKey[25];
 
 void CG_BombasEvent_Receive(void)
 {
     char key[32], path[MAX_QPATH];
     bombasClipCache_t *clip = NULL;
     int i, count, fps, position, width, height, keepRatio;
-    int sourceWidth, sourceHeight, hasSound, safePct;
+    int sourceWidth, sourceHeight, hasSound, safePct, captionPosition;
+    const char *hex;
 
-    if (trap_Argc() != 12) return;
+    if (trap_Argc() != 12 && trap_Argc() != 14) return;
     Q_strncpyz(key, CG_Argv(1), sizeof(key));
     if (strlen(key) != 24) return;
     for (i = 0; i < 24; i++) {
@@ -3066,6 +3069,9 @@ void CG_BombasEvent_Receive(void)
     height = Q_atoi(CG_Argv(6)); keepRatio = Q_atoi(CG_Argv(7));
     sourceWidth = Q_atoi(CG_Argv(8)); sourceHeight = Q_atoi(CG_Argv(9));
     hasSound = Q_atoi(CG_Argv(10)); safePct = Q_atoi(CG_Argv(11));
+    captionPosition = trap_Argc() == 14 ? Q_atoi(CG_Argv(12)) : 0;
+    hex = trap_Argc() == 14 ? CG_Argv(13) : "-";
+    if (captionPosition < 0 || captionPosition > 4) return;
     if (count < 1 || count > BOMBAS_MAX_FRAMES || fps != 12 ||
         position < 0 || position > 7 || width < 10 || width > 70 ||
         height < 10 || height > 65 || sourceWidth < 2 || sourceWidth > 256 ||
@@ -3085,11 +3091,11 @@ void CG_BombasEvent_Receive(void)
         Com_Memset(clip, 0, sizeof(*clip));
         Q_strncpyz(clip->key, key, sizeof(clip->key));
         clip->count = count;
-        for (i = 0; i < count; i++) {
-            Com_sprintf(path, sizeof(path), "gfx/bombas/events/%s/f%02d.jpg", key, i + 1);
-            clip->frames[i] = trap_R_RegisterShaderNoMip(path);
-        }
+        // Lazy JPG registration: loading hundreds of textures synchronously
+        // in one server command would cause a long game-frame stall.
+        // Register only the visible frame while the clip plays.
     }
+    Q_strncpyz(bombasEventKey, key, sizeof(bombasEventKey));
     bombasEvent.count = count;
     bombasEvent.fps = fps;
     bombasEvent.position = position;
@@ -3099,6 +3105,22 @@ void CG_BombasEvent_Receive(void)
     bombasEvent.sourceWidth = sourceWidth;
     bombasEvent.sourceHeight = sourceHeight;
     bombasEvent.safePct = safePct;
+    bombasEvent.captionPosition = captionPosition;
+    bombasEvent.caption[0] = '\0';
+    if (captionPosition && hex[0] != '-' && strlen(hex) <= 320 && !(strlen(hex) & 1)) {
+        size_t j, length = strlen(hex) / 2;
+        if (length > sizeof(bombasEvent.caption) - 1) return;
+        for (j = 0; j < length; j++) {
+            char part[3] = {hex[j * 2], hex[j * 2 + 1], '\0'};
+            int val;
+            if (!Q_IsColorString(part) && !isxdigit((unsigned char)part[0])) break;
+            if (!isxdigit((unsigned char)part[1])) break;
+            val = (int)strtol(part, NULL, 16);
+            if (val == 0 || val == '\n' || val == '\r') break;
+            bombasEvent.caption[j] = (char)val;
+        }
+        bombasEvent.caption[j] = '\0';
+    }
     Com_Memcpy(bombasEvent.frames, clip->frames, sizeof(bombasEvent.frames));
     bombasEvent.start = cg.time;
     bombasEvent.lastTime = cg.time;
@@ -3117,13 +3139,27 @@ void CG_BombasEvent_Draw(void)
     int frame;
     float screenW, screenH, aspect, marginX, marginY, boxW, boxH, scale, x, y;
     float drawW, drawH;
+    char path[MAX_QPATH];
+    bombasClipCache_t *clip = NULL;
+    int j;
     if (!bombasEvent.count || !cg.snap) return;
     frame = (cg.time - bombasEvent.start) * bombasEvent.fps / 1000;
     if (frame < 0 || frame >= bombasEvent.count) {
         bombasEvent.count = 0;
         return;
     }
-    if (!bombasEvent.frames[frame]) return;
+    if (!bombasEvent.frames[frame]) {
+        for (j = 0; j < BOMBAS_CACHE_ENTRIES; j++) {
+            if (!Q_stricmp(bombasClips[j].key, bombasEventKey) && bombasClips[j].count == bombasEvent.count) {
+                clip = &bombasClips[j]; break;
+            }
+        }
+        if (!clip) return;
+        Com_sprintf(path, sizeof(path), "gfx/bombas/events/%s/f%04d.jpg", clip->key, frame+1);
+        bombasEvent.frames[frame] = trap_R_RegisterShaderNoMip(path);
+        clip->frames[frame] = bombasEvent.frames[frame];
+        if (!bombasEvent.frames[frame]) return;
+    }
     screenW = (float)cgs.glconfig.vidWidth;
     screenH = (float)cgs.glconfig.vidHeight;
     if (screenW <= 0.f || screenH <= 0.f) return;
@@ -3146,6 +3182,25 @@ void CG_BombasEvent_Draw(void)
     x += (boxW - drawW) * .5f; y += (boxH - drawH) * .5f;
     trap_R_SetColor(NULL);
     trap_R_DrawStretchPic(x, y, drawW, drawH, 0.f, 0.f, 1.f, 1.f, bombasEvent.frames[frame]);
+    if (bombasEvent.captionPosition && bombasEvent.caption[0]) {
+        float textX = screenW * .5f, textY = screenH * .10f;
+        float fy;
+        if (bombasEvent.captionPosition == 2) textY = screenH * .50f;
+        if (bombasEvent.captionPosition == 3) {
+            textX = x + drawW * .5f; textY = y - screenH * .018f;
+        }
+        if (bombasEvent.captionPosition == 4) {
+            textX = x + drawW * .5f; textY = y + drawH + screenH * .034f;
+        }
+        if (textY < screenH * .035f) textY = screenH * .035f;
+        if (textY > screenH * .96f) textY = screenH * .96f;
+        fy = textY * SCREEN_HEIGHT / screenH;
+        // Text renderer uses 640x480 virtual coordinates, unlike the raw
+        // pixel-based video renderer; preserve centering on widescreen.
+        CG_Text_Paint_Centred_Ext(textX * SCREEN_WIDTH / screenW, fy,
+                                 .29f, .29f, colorWhite, bombasEvent.caption,
+                                 0, 0, ITEM_TEXTSTYLE_SHADOWED, &cgs.media.limboFont2);
+    }
 }
 
 static void CG_ServerCommand(void)
