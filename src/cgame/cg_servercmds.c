@@ -3026,12 +3026,140 @@ void CG_AddToBannerPrint(const char *str)
  * @brief The string has been tokenized and can be retrieved with
  * Cmd_Argc() / Cmd_Argv()
  */
+/* Bombas ET: Legacy client overlay - compiled into the standard downloaded cgame module. */
+#define BOMBAS_MAX_FRAMES 24
+#define BOMBAS_CACHE_ENTRIES 6
+
+typedef struct {
+    int start, count, fps, position, width, height;
+    int sourceWidth, sourceHeight, keepRatio, safePct, lastTime;
+    qhandle_t frames[BOMBAS_MAX_FRAMES];
+} bombasEvent_t;
+
+typedef struct {
+    char key[25];
+    int count;
+    qhandle_t frames[BOMBAS_MAX_FRAMES];
+    sfxHandle_t sound;
+} bombasClipCache_t;
+
+static bombasEvent_t bombasEvent;
+static bombasClipCache_t bombasClips[BOMBAS_CACHE_ENTRIES];
+static int bombasNextClip;
+
+void CG_BombasEvent_Receive(void)
+{
+    char key[32], path[MAX_QPATH];
+    bombasClipCache_t *clip = NULL;
+    int i, count, fps, position, width, height, keepRatio;
+    int sourceWidth, sourceHeight, hasSound, safePct;
+
+    if (trap_Argc() != 12) return;
+    Q_strncpyz(key, CG_Argv(1), sizeof(key));
+    if (strlen(key) != 24) return;
+    for (i = 0; i < 24; i++) {
+        if (!((key[i] >= 'a' && key[i] <= 'f') || (key[i] >= '0' && key[i] <= '9'))) return;
+    }
+
+    count = Q_atoi(CG_Argv(2)); fps = Q_atoi(CG_Argv(3));
+    position = Q_atoi(CG_Argv(4)); width = Q_atoi(CG_Argv(5));
+    height = Q_atoi(CG_Argv(6)); keepRatio = Q_atoi(CG_Argv(7));
+    sourceWidth = Q_atoi(CG_Argv(8)); sourceHeight = Q_atoi(CG_Argv(9));
+    hasSound = Q_atoi(CG_Argv(10)); safePct = Q_atoi(CG_Argv(11));
+    if (count < 1 || count > BOMBAS_MAX_FRAMES || fps != 12 ||
+        position < 0 || position > 7 || width < 10 || width > 70 ||
+        height < 10 || height > 65 || sourceWidth < 2 || sourceWidth > 256 ||
+        sourceHeight < 2 || sourceHeight > 256 || safePct < 0 || safePct > 15 ||
+        (keepRatio != 0 && keepRatio != 1) || (hasSound != 0 && hasSound != 1)) return;
+    if (bombasEvent.lastTime > 0 && cg.time >= bombasEvent.lastTime &&
+        cg.time - bombasEvent.lastTime < 1000) return;
+
+    for (i = 0; i < BOMBAS_CACHE_ENTRIES; i++) {
+        if (!Q_stricmp(bombasClips[i].key, key) && bombasClips[i].count == count) {
+            clip = &bombasClips[i];
+            break;
+        }
+    }
+    if (!clip) {
+        clip = &bombasClips[bombasNextClip++ % BOMBAS_CACHE_ENTRIES];
+        Com_Memset(clip, 0, sizeof(*clip));
+        Q_strncpyz(clip->key, key, sizeof(clip->key));
+        clip->count = count;
+        for (i = 0; i < count; i++) {
+            Com_sprintf(path, sizeof(path), "gfx/bombas/events/%s/f%02d.jpg", key, i + 1);
+            clip->frames[i] = trap_R_RegisterShaderNoMip(path);
+        }
+    }
+    bombasEvent.count = count;
+    bombasEvent.fps = fps;
+    bombasEvent.position = position;
+    bombasEvent.width = width;
+    bombasEvent.height = height;
+    bombasEvent.keepRatio = keepRatio;
+    bombasEvent.sourceWidth = sourceWidth;
+    bombasEvent.sourceHeight = sourceHeight;
+    bombasEvent.safePct = safePct;
+    Com_Memcpy(bombasEvent.frames, clip->frames, sizeof(bombasEvent.frames));
+    bombasEvent.start = cg.time;
+    bombasEvent.lastTime = cg.time;
+
+    if (hasSound) {
+        if (!clip->sound) {
+            Com_sprintf(path, sizeof(path), "sound/bombas/events/%s.wav", key);
+            clip->sound = trap_S_RegisterSound(path, qfalse);
+        }
+        if (clip->sound) trap_S_StartLocalSound(clip->sound, CHAN_LOCAL_SOUND);
+    }
+}
+
+void CG_BombasEvent_Draw(void)
+{
+    int frame;
+    float screenW, screenH, aspect, marginX, marginY, boxW, boxH, scale, x, y;
+    float drawW, drawH;
+    if (!bombasEvent.count || !cg.snap) return;
+    frame = (cg.time - bombasEvent.start) * bombasEvent.fps / 1000;
+    if (frame < 0 || frame >= bombasEvent.count) {
+        bombasEvent.count = 0;
+        return;
+    }
+    if (!bombasEvent.frames[frame]) return;
+    screenW = (float)cgs.glconfig.vidWidth;
+    screenH = (float)cgs.glconfig.vidHeight;
+    if (screenW <= 0.f || screenH <= 0.f) return;
+    aspect = (float)bombasEvent.sourceWidth / (float)bombasEvent.sourceHeight;
+    marginX = screenW * bombasEvent.safePct / 100.f;
+    marginY = screenH * bombasEvent.safePct / 100.f;
+    boxW = screenW * bombasEvent.width / 100.f;
+    boxH = bombasEvent.keepRatio ? boxW / aspect : screenH * bombasEvent.height / 100.f;
+    scale = 1.f;
+    if (boxW > screenW - 2.f * marginX) scale = (screenW - 2.f * marginX) / boxW;
+    if (boxH * scale > screenH - 2.f * marginY) scale = (screenH - 2.f * marginY) / boxH;
+    boxW *= scale; boxH *= scale;
+    x = bombasEvent.position == 1 || bombasEvent.position == 6 ? (screenW - boxW) * .5f :
+        (bombasEvent.position == 2 || bombasEvent.position == 4 || bombasEvent.position == 7 ? screenW - marginX - boxW : marginX);
+    y = bombasEvent.position < 3 ? marginY :
+        (bombasEvent.position < 5 ? (screenH - boxH) * .5f : screenH - marginY - boxH);
+    drawW = boxW;
+    drawH = drawW / aspect;
+    if (drawH > boxH) { drawH = boxH; drawW = drawH * aspect; }
+    x += (boxW - drawW) * .5f; y += (boxH - drawH) * .5f;
+    trap_R_SetColor(NULL);
+    trap_R_DrawStretchPic(x, y, drawW, drawH, 0.f, 0.f, 1.f, 1.f, bombasEvent.frames[frame]);
+}
+
 static void CG_ServerCommand(void)
 {
 	const char *cmd;
 	long       hash = 0;
 
 	cmd = CG_Argv(0);
+	if (!Q_stricmp(cmd, "bombas_evt"))
+	{
+		CG_BombasEvent_Receive();
+		return;
+	}
+
 
 	if (!cmd[0])
 	{

@@ -4257,6 +4257,8 @@ static void CG_DrawEnvironmentalAwareness()
 /**
  * @brief CG_Draw2D
  */
+void CG_BombasEvent_Draw(void);
+
 static void CG_Draw2D(void)
 {
 	CG_ScreenFade();
@@ -4819,6 +4821,7 @@ void CG_DrawActive()
 	{
 		// draw status bar and other floating elements
 		CG_Draw2D();
+		CG_BombasEvent_Draw();
 	}
 	else
 	{

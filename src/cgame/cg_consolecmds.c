@@ -3492,8 +3492,11 @@ static void CG_ShoutcasterSwapTeamLabels(void)
 	trap_Cvar_Set("cg_shoutcastTeamScoreBlue", va("%i", score));
 }
 
+void CG_BombasEvent_Receive(void);
+
 static consoleCommand_t commands[] =
 {
+	{ "bombas_preview",        CG_BombasEvent_Receive      },
 	{ "testgun",                CG_TestGun_f                 },
 	{ "testmodel",              CG_TestModel_f               },
 	{ "nextframe",              CG_TestModelNextFrame_f      },
