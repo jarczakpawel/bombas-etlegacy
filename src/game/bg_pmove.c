@@ -823,6 +823,9 @@ static qboolean PM_CheckJump(void)
 	pml.groundPlane   = qfalse;     // jumping away
 	pml.walking       = qfalse;
 	pm->ps->pm_flags |= PMF_JUMP_HELD;
+	// BOMBAS: only a genuine ground jump arms the airborne jump.
+	pm->ps->pm_flags |= PMF_BOMBAS_JUMP_ARMED;
+	pm->ps->pm_flags &= ~PMF_BOMBAS_JUMP_USED;
 
 	pm->ps->groundEntityNum = ENTITYNUM_NONE;
 	pm->ps->velocity[2]     = JUMP_VELOCITY;
@@ -1261,6 +1264,24 @@ static void PM_AirMove(void)
 	float     scale;
 	usercmd_t cmd;
 
+	// BOMBAS double jump (Nitmod-like): second fresh jump press at any
+	// point of the initial jump. A 1.4x upward impulse, only once per jump.
+	// pm_flags are replicated, so cgame and qagame predict identically.
+	if (pm->ps->pm_type == PM_NORMAL && pm->waterlevel <= 1 &&
+	    (pm->ps->pm_flags & PMF_BOMBAS_JUMP_ARMED) &&
+	    !(pm->ps->pm_flags & (PMF_BOMBAS_JUMP_USED | PMF_JUMP_HELD |
+	                            PMF_RESPAWNED | PMF_LADDER | PMF_LIMBO |
+	                            PMF_TIME_LOCKPLAYER)) &&
+	    !(pm->ps->eFlags & EF_PRONE) &&
+	    pm->cmd.upmove >= 10 &&
+	    pm->ps->groundEntityNum == ENTITYNUM_NONE)
+	{
+		pm->ps->pm_flags &= ~PMF_BOMBAS_JUMP_ARMED;
+		pm->ps->pm_flags |= PMF_BOMBAS_JUMP_USED | PMF_JUMP_HELD;
+		pm->ps->velocity[2] = JUMP_VELOCITY * 1.4f;
+		PM_PlayJumpAnim();
+	}
+
 	PM_Friction();
 
 	fmove = pm->cmd.forwardmove;
@@ -1323,6 +1344,9 @@ static void PM_WalkMove(void)
 		PM_WaterMove();
 		return;
 	}
+
+	// BOMBAS: landing restores exactly one double jump allowance.
+	pm->ps->pm_flags &= ~(PMF_BOMBAS_JUMP_ARMED | PMF_BOMBAS_JUMP_USED);
 
 	if (PM_CheckJump())
 	{

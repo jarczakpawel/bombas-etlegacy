@@ -529,6 +529,9 @@ typedef enum
 // pmove->pm_flags	(sent as max 16 bits in msg.c)
 #define PMF_DUCKED          1
 #define PMF_JUMP_HELD       2
+// BOMBAS: synchronized, network-visible states, needed by cgame prediction.
+#define PMF_BOMBAS_JUMP_ARMED  1024
+#define PMF_BOMBAS_JUMP_USED   8192
 #define PMF_LADDER          4          ///< player is on a ladder
 #define PMF_BACKWARDS_JUMP  8          ///< go into backwards land
 #define PMF_BACKWARDS_RUN   16         ///< coast down to backwards run
