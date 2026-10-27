@@ -4266,6 +4266,19 @@ void CG_WeaponBank_f(void)
 		return;
 	}
 
+	if (bank == 4 && CG_WeaponSelectable(WP_GRENADE_LAUNCHER, qfalse) && CG_WeaponSelectable(WP_GRENADE_PINEAPPLE, qfalse))
+	{
+		if (cg.snap->ps.weapon != cg.weaponSelect ||
+		    (cg.snap->ps.nextWeapon && cg.snap->ps.weapon != cg.snap->ps.nextWeapon))
+		{
+			return;
+		}
+
+		newWeapon = cg.weaponSelect == WP_GRENADE_LAUNCHER ? WP_GRENADE_PINEAPPLE : WP_GRENADE_LAUNCHER;
+		CG_FinishWeaponChange(cg.weaponSelect, newWeapon);
+		return;
+	}
+
 	CG_WeaponIndex(cg.weaponSelect, &curbank, &curcycle);  // get bank/cycle of current weapon
 
 	if (bank == curbank)
