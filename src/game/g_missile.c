@@ -39,8 +39,8 @@
 #endif
 
 
-#define BOMBAS_MOLOTOV_LIFETIME 3500
-#define BOMBAS_MOLOTOV_RADIUS 88.f
+#define BOMBAS_MOLOTOV_LIFETIME 8750
+#define BOMBAS_MOLOTOV_RADIUS 108.f
 
 void G_FlameDamage(gentity_t *self, gentity_t *ignoreent);
 

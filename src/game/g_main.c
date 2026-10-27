@@ -2547,7 +2547,7 @@ void BeginIntermission(void)
 	// MAPVOTE: initialize and populate the map struct for map voting
 	if (g_gametype.integer == GT_WOLF_MAPVOTE)
 	{
-		char bspNames[8192];    // 32 x 128 chars = 4096 minimum. Up to 64 (full-sized) mapnames fit in 8192 bytes..
+		char bspNames[16384];    // space for up to 128 map names
 		int  len, maxMaps;
 		char *bspptr;
 		char *bspptrTmp;
@@ -2559,16 +2559,16 @@ void BeginIntermission(void)
 
 		// A real shuffle ...
 		// This way not always the same maps will be on top of the list.
-		// Servers with more than 32 maps will then be able to vote on more maps (64 is absolute max.).
+		// Servers with more than 32 maps can rotate voting candidates across all 128 source entries.
 		// Note: They will never see more than 32 maps in the list (to vote for).
 		{
-			char     shuffledNames[64][128];
-			qboolean shuffled[64] = { 0 };
+			char     shuffledNames[128][128];
+			qboolean shuffled[128] = { 0 };
 			int      j            = 0;
 
 			// shuffle the complete list:
 			// Backup the list, erase the list, shuffle names, fill the list again..
-			maxMaps   = (level.mapVoteNumMaps < 64) ? level.mapVoteNumMaps : 64;
+			maxMaps   = (level.mapVoteNumMaps < 128) ? level.mapVoteNumMaps : 128;
 			bspptrTmp = bspptr;
 			for (i = 0; i < maxMaps; ++i)
 			{
