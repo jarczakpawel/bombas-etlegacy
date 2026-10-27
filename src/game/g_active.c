@@ -357,7 +357,7 @@ qboolean ReadyToConstruct(gentity_t *ent, gentity_t *constructible, qboolean upd
  * @param[in] ent Entity
  * @param[in] pm  Player Move
  */
-void ClientImpacts(gentity_t *ent, pmove_t *pm)
+void ClientImpacts(gentity_t *ent, pmove_t *pm, float fallingSpeed)
 {
 	int       i, j;
 	gentity_t *other;
@@ -379,6 +379,20 @@ void ClientImpacts(gentity_t *ent, pmove_t *pm)
 			continue;   // duplicated
 		}
 		other = &g_entities[pm->touchents[i]];
+		if (g_goomba.integer > 0 && fallingSpeed < -160.f &&
+		    ent->client && ent->health > 0 && ent->client->ps.pm_type == PM_NORMAL &&
+		    ent->client->ps.groundEntityNum == other->s.number &&
+		    other != ent && other->client && other->health > 0 &&
+		    (other->client->sess.sessionTeam == TEAM_AXIS || other->client->sess.sessionTeam == TEAM_ALLIES))
+		{
+			int damage = (int)((-fallingSpeed - 120.f) * (float)g_goomba.integer * 0.25f);
+			if (damage < 5)
+			{
+				damage = 5;
+			}
+			G_Damage(other, ent, ent, NULL, other->r.currentOrigin, damage, 0, MOD_CRUSH);
+		}
+
 
 #ifdef FEATURE_OMNIBOT
 		if ((ent->client) /*&& !(ent->r.svFlags & SVF_BOT)*/ && (other->r.svFlags & SVF_BOT) &&
@@ -1204,6 +1218,7 @@ void WolfFindMedic(gentity_t *self)
 void ClientThink_real(gentity_t *ent)
 {
 	int       msec, oldEventSequence;
+	float     fallingSpeed;
 	pmove_t   pm;
 	usercmd_t *ucmd;
 	gclient_t *client = ent->client;
@@ -1475,6 +1490,7 @@ void ClientThink_real(gentity_t *ent)
 
 	pm.activateLean = client->pers.activateLean;
 
+	fallingSpeed = client->ps.velocity[2];
 	Pmove(&pm); // monsterslick
 
 	// server cursor hints
@@ -1541,7 +1557,7 @@ void ClientThink_real(gentity_t *ent)
 	//VectorCopy(ent->client->ps.origin, ent->r.currentOrigin);
 
 	// touch other objects
-	ClientImpacts(ent, &pm);
+	ClientImpacts(ent, &pm, fallingSpeed);
 
 	// save results of triggers and client events
 	if (ent->client->ps.eventSequence != oldEventSequence)

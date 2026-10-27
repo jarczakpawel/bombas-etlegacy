@@ -40,6 +40,7 @@
 #ifdef GAMEDLL
 extern vmCvar_t g_developer;
 extern vmCvar_t team_riflegrenades;
+extern qboolean G_BombasMolotovWeapon(int weapon, team_t team);
 #endif
 
 // *INDENT-OFF*
@@ -2705,6 +2706,18 @@ qboolean BG_CanItemBeGrabbed(const entityState_t *ent, const playerState_t *ps, 
 	case IT_WEAPON:
 		if (item->giWeapon == WP_AMMO)
 		{
+#ifdef GAMEDLL
+			if (teamNum == TEAM_ALLIES && G_BombasMolotovWeapon(WP_GRENADE_PINEAPPLE, teamNum))
+			{
+				int reserve = GetWeaponTableData(WP_GRENADE_LAUNCHER)->ammoIndex;
+				int clip = GetWeaponTableData(WP_GRENADE_LAUNCHER)->clipIndex;
+				int limit = BG_MaxAmmoForWeapon(WP_GRENADE_PINEAPPLE, skill, ps->stats[STAT_PLAYER_CLASS]);
+				if (ps->ammo[reserve] + ps->ammoclip[clip] < limit)
+				{
+					return qtrue;
+				}
+			}
+#endif
 			// magic ammo for any two-handed weapon
 			// - only pick up if ammo is not full, numClips is 0, so ps will
 			// NOT be changed (I know, it places the burden on the programmer, rather than the

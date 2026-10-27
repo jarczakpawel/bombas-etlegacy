@@ -1374,6 +1374,10 @@ void SetWolfSpawnWeapons(gclient_t *client)
 			AddWeaponToPlayer(client, weaponClassInfo->weapon, weaponClassInfo->startingAmmo, weaponClassInfo->startingClip, qfalse);
 		}
 	}
+	if (pc == PC_MEDIC && g_bombasAdrenaline.integer && !COM_BitCheck(client->ps.weapons, WP_MEDIC_ADRENALINE))
+	{
+		AddWeaponToPlayer(client, WP_MEDIC_ADRENALINE, 0, 1, qfalse);
+	}
 }
 
 /**

@@ -1238,7 +1238,8 @@ static void CG_Missile(centity_t *cent)
 	{
 		s1->weapon = 0;
 	}
-	weapon = &cg_weapons[s1->weapon];
+	weapon = s1->weapon == WP_GRENADE_LAUNCHER && s1->teamNum == TEAM_ALLIES && cg_bombasAlliedGrenade.missileModel
+	         ? &cg_bombasAlliedGrenade : &cg_weapons[s1->weapon];
 
 	if (s1->weapon == WP_SMOKE_BOMB)
 	{
