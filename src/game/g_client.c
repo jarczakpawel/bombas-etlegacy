@@ -3259,6 +3259,25 @@ void ClientSpawn(gentity_t *ent, qboolean revived, qboolean teamChange, qboolean
 
 	trap_GetUsercmd(client - level.clients, &ent->client->pers.cmd);
 
+	if (!revived && g_bombasMode.integer >= 1 && g_bombasMode.integer <= 3 &&
+	    (client->sess.sessionTeam == TEAM_AXIS || client->sess.sessionTeam == TEAM_ALLIES))
+	{
+		int wanted = g_bombasMode.integer == 2 ? PC_MEDIC : g_bombasMode.integer == 3 ? PC_COVERTOPS : PC_SOLDIER;
+		client->sess.playerType = wanted;
+		client->sess.latchPlayerType = wanted;
+		if (g_bombasMode.integer == 1)
+		{
+			client->sess.playerWeapon = WP_PANZERFAUST;
+			client->sess.latchPlayerWeapon = WP_PANZERFAUST;
+		}
+		else if (g_bombasMode.integer == 3)
+		{
+			int rifle = client->sess.sessionTeam == TEAM_AXIS ? WP_K43 : WP_GARAND;
+			client->sess.playerWeapon = rifle;
+			client->sess.latchPlayerWeapon = rifle;
+		}
+	}
+
 	// Add appropriate weapons
 	if (!revived)
 	{
@@ -3333,6 +3352,42 @@ void ClientSpawn(gentity_t *ent, qboolean revived, qboolean teamChange, qboolean
 
 	SetWolfSpawnWeapons(client);
 
+	if (!revived && g_bombasMode.integer == 1 &&
+	    (client->sess.sessionTeam == TEAM_AXIS || client->sess.sessionTeam == TEAM_ALLIES))
+	{
+		Com_Memset(client->ps.weapons, 0, sizeof(client->ps.weapons));
+		Com_Memset(client->ps.ammo, 0, sizeof(client->ps.ammo));
+		Com_Memset(client->ps.ammoclip, 0, sizeof(client->ps.ammoclip));
+		COM_BitSet(client->ps.weapons, WP_PANZERFAUST);
+		client->ps.weapon = WP_PANZERFAUST;
+		client->ps.ammoclip[GetWeaponTableData(WP_PANZERFAUST)->clipIndex] = 1;
+		client->ps.ammo[GetWeaponTableData(WP_PANZERFAUST)->ammoIndex] = 999;
+#ifdef FEATURE_OMNIBOT
+		Bot_Event_ResetWeapons(client->ps.clientNum);
+		Bot_Event_AddWeapon(client->ps.clientNum, Bot_WeaponGameToBot(WP_PANZERFAUST));
+#endif
+	}
+
+	if (!revived && g_bombasMode.integer == 3 &&
+	    (client->sess.sessionTeam == TEAM_AXIS || client->sess.sessionTeam == TEAM_ALLIES))
+	{
+		weapon_t rifle = client->sess.sessionTeam == TEAM_AXIS ? WP_K43 : WP_GARAND;
+		weapon_t scope = GetWeaponTableData(rifle)->weapAlts;
+		int w;
+		for (w = 1; w < WP_NUM_WEAPONS; w++)
+		{
+			if (w != rifle && w != scope)
+			{
+				COM_BitClear(client->ps.weapons, w);
+			}
+		}
+		client->ps.weapon = rifle;
+#ifdef FEATURE_OMNIBOT
+		Bot_Event_ResetWeapons(client->ps.clientNum);
+		Bot_Event_AddWeapon(client->ps.clientNum, Bot_WeaponGameToBot(rifle));
+#endif
+	}
+
 	// increases stats[STAT_MAX_HEALTH] based on # of medics in game
 	AddMedicTeamBonus(client);
 
@@ -3370,7 +3425,7 @@ void ClientSpawn(gentity_t *ent, qboolean revived, qboolean teamChange, qboolean
 		}
 	}
 
-	if (!revived && (client->sess.sessionTeam == TEAM_AXIS || client->sess.sessionTeam == TEAM_ALLIES))
+	if (!revived && g_bombasMode.integer != 1 && (client->sess.sessionTeam == TEAM_AXIS || client->sess.sessionTeam == TEAM_ALLIES))
 	{
 		weapon_t normal = WP_GRENADE_LAUNCHER;
 		weapon_t bottle = WP_GRENADE_PINEAPPLE;

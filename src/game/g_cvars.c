@@ -60,6 +60,7 @@ vmCvar_t g_minGameClients;
 vmCvar_t g_dedicated;
 vmCvar_t g_speed;
 vmCvar_t g_gravity;
+vmCvar_t g_bombasMode;
 vmCvar_t g_cheats;
 vmCvar_t g_knockback;
 
@@ -438,6 +439,7 @@ cvarTable_t gameCvarTable[] =
 
 	{ &g_speed,                           "g_speed",                           "320",                        0,                                               0, qtrue,  qtrue  },
 	{ &g_gravity,                         "g_gravity",                         "800",                        0,                                               0, qtrue,  qtrue  },
+	{ &g_bombasMode,                      "g_bombasMode",                      "0",                          CVAR_SERVERINFO,                                 0, qtrue,  qfalse },
 	{ &g_knockback,                       "g_knockback",                       "1000",                       0,                                               0, qtrue,  qtrue  },
 
 	{ &g_needpass,                        "g_needpass",                        "0",                          CVAR_SERVERINFO | CVAR_ROM,                      0, qtrue,  qfalse },

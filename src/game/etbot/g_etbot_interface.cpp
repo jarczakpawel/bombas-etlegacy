@@ -2191,8 +2191,27 @@ public:
 			}
 		}
 
+		if (g_bombasMode.integer == 1)
+		{
+			_newclass = ET_CLASS_SOLDIER;
+		}
+		else if (g_bombasMode.integer == 2)
+		{
+			_newclass = ET_CLASS_MEDIC;
+		}
+		else if (g_bombasMode.integer == 3)
+		{
+			_newclass = ET_CLASS_COVERTOPS;
+		}
+
 		int team = Bot_TeamGameToBot(bot->client->sess.sessionTeam);
 		bot->client->sess.latchPlayerType = playerClassBotToGame(_newclass);
+
+		if (g_bombasMode.integer == 1)
+		{
+			bot->client->sess.latchPlayerWeapon = WP_PANZERFAUST;
+			bot->client->sess.latchPlayerWeapon2 = WP_NONE;
+		}
 
 		Msg_PlayerChooseEquipment *pMsg = 0;
 		if (_data)
@@ -2238,6 +2257,12 @@ public:
 				bot->client->sess.latchPlayerWeapon2 = WP_NONE;
 			}
 #endif
+		}
+
+		if (g_bombasMode.integer == 1)
+		{
+			bot->client->sess.latchPlayerWeapon = WP_PANZERFAUST;
+			bot->client->sess.latchPlayerWeapon2 = WP_NONE;
 		}
 
 		{

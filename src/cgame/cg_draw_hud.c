@@ -1434,6 +1434,13 @@ void CG_DrawAmmoCount(hudComponent_t *comp)
 		return;
 	}
 
+	if (cg.predictedPlayerState.weapon == WP_PANZERFAUST &&
+	    Q_atoi(Info_ValueForKey(CG_ConfigString(CS_SERVERINFO), "g_bombasMode")) == 1)
+	{
+		CG_DrawCompText(comp, "\xE2\x88\x9E", *color, comp->styleText, &cgs.media.limboFont1);
+		return;
+	}
+
 	// Draw ammo
 	CG_PlayerAmmoValue(&value, &value2, &value3, NULL, (comp->style & 1) ? &color : NULL);
 

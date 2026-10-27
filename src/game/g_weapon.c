@@ -3919,6 +3919,11 @@ gentity_t *weapon_antitank_fire(gentity_t *ent)
 	VectorScale(dir, 2500, dir);
 
 	rocket = fire_missile(ent, muzzleEffect, dir, ent->s.weapon);
+	if (g_bombasMode.integer == 1 && ent->client)
+	{
+		ent->client->ps.ammo[GetWeaponTableData(WP_PANZERFAUST)->ammoIndex] = 999;
+	}
+
 
 	if (ent->client)
 	{

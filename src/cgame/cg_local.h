@@ -2812,6 +2812,7 @@ extern cgs_t        cgs;
 extern cg_t         cg;
 extern centity_t    cg_entities[MAX_GENTITIES];
 extern weaponInfo_t cg_weapons[MAX_WEAPONS];
+extern weaponInfo_t cg_bombasAlliedGrenade;
 extern markPoly_t   cg_markPolys[MAX_MARK_POLYS];
 
 #define SCOREBOARD_XP    0

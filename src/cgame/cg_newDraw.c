@@ -248,6 +248,8 @@ void CG_DrawPlayerWeaponIcon(rectDef_t *rect, int align, vec4_t *refcolor)
 
 	if (cg_weapons[realweap].weaponIcon[1])
 	{
+		qhandle_t icon = realweap == WP_GRENADE_LAUNCHER && cg.predictedPlayerState.persistant[PERS_TEAM] == TEAM_ALLIES && cg_bombasAlliedGrenade.weaponIcon[1]
+		                ? cg_bombasAlliedGrenade.weaponIcon[1] : cg_weapons[realweap].weaponIcon[1];
 		float size = MIN(rect->w, rect->h);
 		float x    = rect->x;
 		float y    = rect->y;
@@ -280,7 +282,7 @@ void CG_DrawPlayerWeaponIcon(rectDef_t *rect, int align, vec4_t *refcolor)
 		}
 
 		trap_R_SetColor(*refcolor);
-		CG_DrawPic(x, y, w, h, cg_weapons[realweap].weaponIcon[1]);
+		CG_DrawPic(x, y, w, h, icon);
 		trap_R_SetColor(NULL);
 	}
 }

@@ -478,6 +478,11 @@ int Pickup_Weapon(gentity_t *ent, gentity_t *other)
 	int      quantity;
 	qboolean alreadyHave = qfalse;
 
+	if (g_bombasMode.integer == 1 && ent->item->giWeapon != WP_AMMO)
+	{
+		return 0;
+	}
+
 	// magic ammo for any two-handed weapon
 	if (ent->item->giWeapon == WP_AMMO)
 	{

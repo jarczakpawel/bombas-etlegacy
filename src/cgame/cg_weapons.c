@@ -1659,7 +1659,9 @@ void CG_AddPlayerWeapon(refEntity_t *parent, playerState_t *ps, centity_t *cent)
 	}
 	// }}} early returns
 
-	weapon = &cg_weapons[weaponNum];
+	team = ps ? (team_t)ps->persistant[PERS_TEAM] : cgs.clientinfo[cent->currentState.clientNum].team;
+	weapon = (weaponNum == WP_GRENADE_LAUNCHER && team == TEAM_ALLIES && cg_bombasAlliedGrenade.weaponModel[modelViewType].model)
+	         ? &cg_bombasAlliedGrenade : &cg_weapons[weaponNum];
 
 	// {{{ add the gun model
 	Com_Memset(&gun, 0, sizeof(gun));
@@ -1675,8 +1677,6 @@ void CG_AddPlayerWeapon(refEntity_t *parent, playerState_t *ps, centity_t *cent)
 	}
 
 	// determine team dependent gun skins
-	team = ps ? (team_t)ps->persistant[PERS_TEAM] : cgs.clientinfo[cent->currentState.clientNum].team;
-
 	if ((weaponNum != WP_SATCHEL) && (cent->currentState.powerups & (1 << PW_OPS_DISGUISED)))
 	{
 		team = team == TEAM_AXIS ? TEAM_ALLIES : TEAM_AXIS;

@@ -35,6 +35,8 @@
 
 #include "cg_local.h"
 
+weaponInfo_t cg_bombasAlliedGrenade;
+
 /**
  * @brief Read information for weapon animations (first/length/fps)
  * @param[in] filename
@@ -1813,6 +1815,11 @@ void CG_RegisterWeapon(int weaponNum, qboolean force)
 		if (!CG_RegisterWeaponFromWeaponFile(va("weapons/%s.weap", GetWeaponTableData(weaponNum)->weapFile), weaponInfo))
 		{
 			CG_Printf(S_COLOR_RED "WARNING: failed to register media for weapon %i from %s.weap\n", weaponNum, GetWeaponTableData(weaponNum)->weapFile);
+		}
+		if (weaponNum == WP_GRENADE_LAUNCHER)
+		{
+			Com_Memset(&cg_bombasAlliedGrenade, 0, sizeof(cg_bombasAlliedGrenade));
+			CG_RegisterWeaponFromWeaponFile("weapons/bombas_allies_grenade.weap", &cg_bombasAlliedGrenade);
 		}
 	}
 	else
