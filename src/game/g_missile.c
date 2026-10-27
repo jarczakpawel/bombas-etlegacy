@@ -46,13 +46,32 @@ void G_FlameDamage(gentity_t *self, gentity_t *ignoreent);
 
 qboolean G_BombasMolotovWeapon(int weapon, team_t team)
 {
-    if (trap_Cvar_VariableIntegerValue("g_bombasMolotov") != 1)
+    static const char *assets[] = {
+        "models/bombas/molotov/fire_patch.md3",
+        "models/bombas/molotov/grenade_combined.md3",
+        "models/bombas/molotov/pineapple_combined.md3",
+        "models/bombas/medic/nitro_label.tga"
+    };
+    fileHandle_t file;
+    int i;
+
+    if (trap_Cvar_VariableIntegerValue("g_bombasMolotov") != 1 ||
+        !((team == TEAM_AXIS && weapon == WP_GRENADE_PINEAPPLE) ||
+          (team == TEAM_ALLIES && weapon == WP_GRENADE_LAUNCHER)))
     {
         return qfalse;
     }
 
-    return (team == TEAM_AXIS && weapon == WP_GRENADE_PINEAPPLE) ||
-           (team == TEAM_ALLIES && weapon == WP_GRENADE_LAUNCHER);
+    for (i = 0; i < (int)(sizeof(assets) / sizeof(assets[0])); i++)
+    {
+        if (trap_FS_FOpenFile(assets[i], &file, FS_READ) <= 0)
+        {
+            return qfalse;
+        }
+        trap_FS_FCloseFile(file);
+    }
+
+    return qtrue;
 }
 
 static qboolean G_BombasMolotovProjectile(const gentity_t *ent)
