@@ -169,8 +169,8 @@ qboolean AddMagicAmmo(gentity_t *receiver, int numOfClips)
 	playerState_t *ps = &receiver->client->ps;
 	team_t team = receiver->client->sess.sessionTeam;
 	qboolean added = BG_AddMagicAmmo(ps, receiver->client->sess.skill, team, numOfClips);
-	weapon_t normal = team == TEAM_AXIS ? WP_GRENADE_LAUNCHER : WP_GRENADE_PINEAPPLE;
-	weapon_t bottle = team == TEAM_AXIS ? WP_GRENADE_PINEAPPLE : WP_GRENADE_LAUNCHER;
+	weapon_t normal = WP_GRENADE_LAUNCHER;
+	weapon_t bottle = WP_GRENADE_PINEAPPLE;
 	weapon_t index;
 	int maxAmmo;
 	int available;

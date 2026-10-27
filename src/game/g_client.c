@@ -3372,8 +3372,21 @@ void ClientSpawn(gentity_t *ent, qboolean revived, qboolean teamChange, qboolean
 
 	if (!revived && (client->sess.sessionTeam == TEAM_AXIS || client->sess.sessionTeam == TEAM_ALLIES))
 	{
-		weapon_t normal = client->sess.sessionTeam == TEAM_AXIS ? WP_GRENADE_LAUNCHER : WP_GRENADE_PINEAPPLE;
-		weapon_t bottle = client->sess.sessionTeam == TEAM_AXIS ? WP_GRENADE_PINEAPPLE : WP_GRENADE_LAUNCHER;
+		weapon_t normal = WP_GRENADE_LAUNCHER;
+		weapon_t bottle = WP_GRENADE_PINEAPPLE;
+
+		if (G_BombasMolotovWeapon(bottle, client->sess.sessionTeam) && client->sess.sessionTeam == TEAM_ALLIES &&
+		    COM_BitCheck(client->ps.weapons, bottle) && !COM_BitCheck(client->ps.weapons, normal))
+		{
+			client->ps.ammo[GetWeaponTableData(normal)->ammoIndex] = client->ps.ammo[GetWeaponTableData(bottle)->ammoIndex];
+			client->ps.ammoclip[GetWeaponTableData(normal)->clipIndex] = client->ps.ammoclip[GetWeaponTableData(bottle)->clipIndex];
+			COM_BitSet(client->ps.weapons, normal);
+			COM_BitClear(client->ps.weapons, bottle);
+			if (client->ps.weapon == bottle)
+			{
+				client->ps.weapon = normal;
+			}
+		}
 
 		if (COM_BitCheck(client->ps.weapons, normal) && G_BombasMolotovWeapon(bottle, client->sess.sessionTeam))
 		{

@@ -47,16 +47,16 @@ void G_FlameDamage(gentity_t *self, gentity_t *ignoreent);
 qboolean G_BombasMolotovWeapon(int weapon, team_t team)
 {
     static const char *assets[] = {
-        "models/bombas/molotov/grenade_combined.md3",
-        "models/bombas/molotov/pineapple_combined.md3",
+        "models/bombas/molotov/v_pineapple_molotov.md3",
+        "models/bombas/molotov/pineapple_molotov.md3",
         "models/bombas/medic/nitro_label.jpg"
     };
     fileHandle_t file;
     int i;
 
     if (trap_Cvar_VariableIntegerValue("g_bombasMolotov") != 1 ||
-        !((team == TEAM_AXIS && weapon == WP_GRENADE_PINEAPPLE) ||
-          (team == TEAM_ALLIES && weapon == WP_GRENADE_LAUNCHER)))
+        !(team == TEAM_AXIS || team == TEAM_ALLIES) ||
+        weapon != WP_GRENADE_PINEAPPLE)
     {
         return qfalse;
     }
