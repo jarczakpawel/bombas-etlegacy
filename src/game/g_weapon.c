@@ -442,47 +442,35 @@ void ReviveEntity(gentity_t *ent, gentity_t *traceEnt)
 static qboolean G_TrySyringeHeal(gentity_t *healer, gentity_t *target, qboolean *refundAmmo)
 {
 	int maxHealth;
-	int healAmount;
 
 	*refundAmmo = qfalse;
 
-	// Keep stock ET behavior unless explicitly enabled.
 	if (g_syringeHealing.integer != 1)
 	{
 		return qfalse;
 	}
 
-	// Only living players are eligible for syringe healing.
 	if (!target->client || target->client->ps.pm_type != PM_NORMAL)
 	{
 		return qfalse;
 	}
 
-	// Invalid heal targets still consume the shot, so we refund here.
-	if (target->client->sess.sessionTeam != healer->client->sess.sessionTeam)
+	if (target->client->sess.sessionTeam != healer->client->sess.sessionTeam ||
+	    target->health <= 0)
 	{
 		*refundAmmo = qtrue;
 		return qtrue;
 	}
 
 	maxHealth = target->client->ps.stats[STAT_MAX_HEALTH];
-	if (target->health > (int)(maxHealth * 0.25f))
+	if (maxHealth <= 0 || target->health >= maxHealth)
 	{
 		*refundAmmo = qtrue;
 		return qtrue;
 	}
 
-	if (BG_IsSkillAvailable(healer->client->sess.skill, SK_FIRST_AID, SK_MEDIC_FULL_REVIVE))
-	{
-		healAmount = maxHealth;
-	}
-	else
-	{
-		healAmount = (int)(maxHealth * 0.5f);
-	}
-
-	target->health                         = healAmount;
-	target->client->ps.stats[STAT_HEALTH]  = healAmount;
+	target->health = maxHealth;
+	target->client->ps.stats[STAT_HEALTH] = maxHealth;
 	target->client->pers.lasthealth_client = healer->s.clientNum;
 
 	G_Sound(target, GAMESOUND_MISC_REVIVE);

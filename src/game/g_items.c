@@ -169,18 +169,23 @@ qboolean AddMagicAmmo(gentity_t *receiver, int numOfClips)
 	playerState_t *ps = &receiver->client->ps;
 	team_t team = receiver->client->sess.sessionTeam;
 	qboolean added = BG_AddMagicAmmo(ps, receiver->client->sess.skill, team, numOfClips);
-	weapon_t grenade = WP_GRENADE_LAUNCHER;
-	int reserve = GetWeaponTableData(grenade)->ammoIndex;
+	weapon_t extra = team == TEAM_AXIS ? WP_GRENADE_PINEAPPLE : WP_GRENADE_LAUNCHER;
+	weapon_t normal;
+	int reserve;
+	int clip;
 	int maxAmmo;
 	int available;
 
-	if (team != TEAM_ALLIES || !G_BombasMolotovWeapon(WP_GRENADE_PINEAPPLE, team))
+	if ((team != TEAM_AXIS && team != TEAM_ALLIES) || !G_BombasMolotovWeapon(WP_GRENADE_PINEAPPLE, team))
 	{
 		return added;
 	}
 
-	maxAmmo = BG_MaxAmmoForWeapon(WP_GRENADE_PINEAPPLE, receiver->client->sess.skill, ps->stats[STAT_PLAYER_CLASS]);
-	available = maxAmmo - ps->ammo[reserve] - ps->ammoclip[GetWeaponTableData(grenade)->clipIndex];
+	normal = GetPlayerClassesData(team, ps->stats[STAT_PLAYER_CLASS])->classGrenadeWeapon.weapon;
+	reserve = GetWeaponTableData(extra)->ammoIndex;
+	clip = GetWeaponTableData(extra)->clipIndex;
+	maxAmmo = BG_MaxAmmoForWeapon(normal, receiver->client->sess.skill, ps->stats[STAT_PLAYER_CLASS]);
+	available = maxAmmo - ps->ammo[reserve] - ps->ammoclip[clip];
 	if (available <= 0)
 	{
 		return added;
@@ -188,7 +193,7 @@ qboolean AddMagicAmmo(gentity_t *receiver, int numOfClips)
 
 	if (numOfClips)
 	{
-		COM_BitSet(ps->weapons, grenade);
+		COM_BitSet(ps->weapons, extra);
 		ps->ammo[reserve] += numOfClips > available ? available : numOfClips;
 	}
 	return qtrue;

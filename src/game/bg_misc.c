@@ -2707,11 +2707,13 @@ qboolean BG_CanItemBeGrabbed(const entityState_t *ent, const playerState_t *ps, 
 		if (item->giWeapon == WP_AMMO)
 		{
 #ifdef GAMEDLL
-			if (teamNum == TEAM_ALLIES && G_BombasMolotovWeapon(WP_GRENADE_PINEAPPLE, teamNum))
+			if ((teamNum == TEAM_AXIS || teamNum == TEAM_ALLIES) && G_BombasMolotovWeapon(WP_GRENADE_PINEAPPLE, teamNum))
 			{
-				int reserve = GetWeaponTableData(WP_GRENADE_LAUNCHER)->ammoIndex;
-				int clip = GetWeaponTableData(WP_GRENADE_LAUNCHER)->clipIndex;
-				int limit = BG_MaxAmmoForWeapon(WP_GRENADE_PINEAPPLE, skill, ps->stats[STAT_PLAYER_CLASS]);
+				weapon_t extra = teamNum == TEAM_AXIS ? WP_GRENADE_PINEAPPLE : WP_GRENADE_LAUNCHER;
+				weapon_t normal = GetPlayerClassesData(teamNum, ps->stats[STAT_PLAYER_CLASS])->classGrenadeWeapon.weapon;
+				int reserve = GetWeaponTableData(extra)->ammoIndex;
+				int clip = GetWeaponTableData(extra)->clipIndex;
+				int limit = BG_MaxAmmoForWeapon(normal, skill, ps->stats[STAT_PLAYER_CLASS]);
 				if (ps->ammo[reserve] + ps->ammoclip[clip] < limit)
 				{
 					return qtrue;

@@ -1,0 +1,89 @@
+name: Bombas cross-platform native cgame
+
+on:
+  workflow_dispatch:
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: linux64
+            flags: -64
+          - id: linux32
+            flags: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Build native module
+        uses: maus007/docker-run-action-fork@v1
+        with:
+          image: etlegacy/lnx-build:latest
+          options: -v ${{ github.workspace }}:/code -e CI=true
+          run: |
+            git config --global --add safe.directory /code
+            ./easybuild.sh build ${{ matrix.flags }} -mod
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.id }}
+          path: build/legacy/cgame*.so
+          if-no-files-found: error
+  windows:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: windows64
+            flags: -64
+          - id: windows32
+            flags: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Build native module
+        shell: cmd
+        run: call .\easybuild.bat build -mod ${{ matrix.flags }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.id }}
+          path: build/legacy/cgame*.dll
+          if-no-files-found: error
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Install dependencies
+        run: brew bundle
+      - name: Build Intel and ARM module
+        env:
+          SDKROOT: /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+          DEVELOPER_DIR: /Library/Developer/CommandLineTools
+        run: ./easybuild.sh build -64 -mod --osx=10.10 --osx-arc="x86_64;arm64" -j
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: build/legacy/cgame_mac
+          if-no-files-found: error
+  package:
+    runs-on: ubuntu-24.04
+    needs: [linux, windows, macos]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "*"
+          path: binaries
+      - name: Create verified auto-download PK3
+        run: python3 tools/bombas/package_crossplatform.py --artifacts binaries --output dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bombas-universal-client-pk3
+          path: dist/*.pk3
+          if-no-files-found: error
