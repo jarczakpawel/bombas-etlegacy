@@ -38,6 +38,131 @@
 #include "g_etbot_interface.h"
 #endif
 
+
+#define BOMBAS_MOLOTOV_LIFETIME 3500
+#define BOMBAS_MOLOTOV_RADIUS 88.f
+
+void G_FlameDamage(gentity_t *self, gentity_t *ignoreent);
+
+qboolean G_BombasMolotovWeapon(int weapon, team_t team)
+{
+    if (trap_Cvar_VariableIntegerValue("g_bombasMolotov") != 1)
+    {
+        return qfalse;
+    }
+
+    return (team == TEAM_AXIS && weapon == WP_GRENADE_PINEAPPLE) ||
+           (team == TEAM_ALLIES && weapon == WP_GRENADE_LAUNCHER);
+}
+
+static qboolean G_BombasMolotovProjectile(const gentity_t *ent)
+{
+    return ent->classname && !Q_stricmp(ent->classname, "bombas_molotov");
+}
+
+static void G_BombasMolotovFireThink(gentity_t *fire)
+{
+    gentity_t *owner;
+
+    if (level.time >= fire->timestamp || fire->r.ownerNum < 0 || fire->r.ownerNum >= level.maxclients)
+    {
+        G_FreeEntity(fire);
+        return;
+    }
+
+    owner = &g_entities[fire->r.ownerNum];
+    if (!owner->inuse || !owner->client || owner->client->pers.connected != CON_CONNECTED ||
+        owner->client->pers.connectTime != fire->count2)
+    {
+        G_FreeEntity(fire);
+        return;
+    }
+
+    if (level.match_pause != PAUSE_NONE)
+    {
+        fire->timestamp += level.frameTime;
+        fire->nextthink = level.time + FRAMETIME;
+        return;
+    }
+
+    if (trap_PointContents(fire->r.currentOrigin, fire->s.number) & CONTENTS_WATER)
+    {
+        G_FreeEntity(fire);
+        return;
+    }
+
+    G_FlameDamage(fire, NULL);
+    fire->nextthink = level.time + FRAMETIME;
+}
+
+static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position)
+{
+    gentity_t *owner;
+    gentity_t *fire;
+    vec3_t start, end;
+    trace_t ground;
+
+    if (missile->r.ownerNum < 0 || missile->r.ownerNum >= level.maxclients)
+    {
+        G_FreeEntity(missile);
+        return;
+    }
+
+    owner = &g_entities[missile->r.ownerNum];
+    if (!owner->inuse || !owner->client || owner->client->pers.connected != CON_CONNECTED)
+    {
+        G_FreeEntity(missile);
+        return;
+    }
+
+    VectorCopy(position, start);
+    VectorCopy(position, end);
+    start[2] += 8.f;
+    end[2] -= 56.f;
+    trap_Trace(&ground, start, NULL, NULL, end, missile->s.number, MASK_SOLID);
+
+    if (ground.fraction < 1.f && ground.plane.normal[2] >= 0.5f)
+    {
+        VectorCopy(ground.endpos, start);
+        start[2] += 2.f;
+    }
+    else
+    {
+        VectorCopy(position, start);
+    }
+
+    if (trap_PointContents(start, missile->s.number) & CONTENTS_WATER)
+    {
+        G_FreeEntity(missile);
+        return;
+    }
+
+    fire = G_Spawn();
+    fire->classname = "bombas_molotov_fire";
+    fire->s.eType = ET_GENERAL;
+    fire->s.modelindex = G_ModelIndex("models/bombas/molotov/fire_patch.md3");
+    fire->s.pos.trType = TR_STATIONARY;
+    fire->r.svFlags |= SVF_BROADCAST;
+    fire->r.ownerNum = missile->r.ownerNum;
+    fire->parent = owner;
+    fire->count2 = owner->client->pers.connectTime;
+    fire->speed = BOMBAS_MOLOTOV_RADIUS;
+    fire->timestamp = level.time + BOMBAS_MOLOTOV_LIFETIME;
+    fire->flameQuotaTime = level.time;
+    fire->think = G_BombasMolotovFireThink;
+    fire->nextthink = level.time + FRAMETIME;
+
+    G_SetOrigin(fire, start);
+    trap_LinkEntity(fire);
+    G_Sound(fire, G_SoundIndex("sound/world/glassbreak1.wav"));
+    G_FreeEntity(missile);
+}
+
+static void G_BombasMolotovExpire(gentity_t *missile)
+{
+    G_BombasMolotovBurst(missile, missile->r.currentOrigin);
+}
+
 /**
  * @brief G_BounceMissile
  * @param[in,out] ent
@@ -174,6 +299,12 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 	entity_event_t event       = EV_NONE;
 	net_uint8_t    param       = 0;
 	int            otherentnum = 0;
+
+	if (G_BombasMolotovProjectile(ent))
+	{
+		G_BombasMolotovBurst(ent, trace->endpos);
+		return;
+	}
 
 	// handle func_explosives
 	if (other->classname && Q_stricmp(other->classname, "func_explosive") == 0)
@@ -312,6 +443,12 @@ void G_ExplodeMissile(gentity_t *ent)
 {
 	vec3_t dir, origin;
 	int    etype;
+
+	if (G_BombasMolotovProjectile(ent))
+	{
+		G_BombasMolotovBurst(ent, ent->r.currentOrigin);
+		return;
+	}
 
 	etype        = ent->s.eType;
 	ent->s.eType = ET_GENERAL;
@@ -1854,6 +1991,16 @@ gentity_t *fire_missile(gentity_t *self, vec3_t start, vec3_t dir, int weapon)
 	                         self->s.number, self->client ? self->client->sess.sessionTeam : self->s.teamNum, // store team so we can generate red or blue smoke
 	                         self->client ? self->client->ps.clientNum : self->s.clientNum,
 	                         self, start, dir);
+
+	if (self->client && G_BombasMolotovWeapon(weapon, self->client->sess.sessionTeam))
+	{
+		bolt->classname = "bombas_molotov";
+		bolt->s.eFlags &= ~(EF_BOUNCE | EF_BOUNCE_HALF);
+		bolt->damage = 0;
+		bolt->splashDamage = 0;
+		bolt->think = G_BombasMolotovExpire;
+		bolt->nextthink = level.time + 2500;
+	}
 
 	// no self->client for shooter_grenade's
 	// if grenade time left, add it to next think and reset it, else add default value

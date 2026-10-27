@@ -3370,6 +3370,16 @@ void ClientSpawn(gentity_t *ent, qboolean revived, qboolean teamChange, qboolean
 		}
 	}
 
+	if (!revived && G_BombasMolotovWeapon(
+	        client->sess.sessionTeam == TEAM_AXIS ? WP_GRENADE_PINEAPPLE : WP_GRENADE_LAUNCHER,
+	        client->sess.sessionTeam))
+	{
+		weapon_t bottle = client->sess.sessionTeam == TEAM_AXIS ? WP_GRENADE_PINEAPPLE : WP_GRENADE_LAUNCHER;
+		COM_BitSet(client->ps.weapons, bottle);
+		client->ps.ammo[GetWeaponTableData(bottle)->ammoIndex] = 1;
+		client->ps.ammoclip[GetWeaponTableData(bottle)->clipIndex] = 1;
+	}
+
 	// client has (almost) no say in weapon selection when spawning
 	client->pers.cmd.weapon = client->ps.weapon;
 
