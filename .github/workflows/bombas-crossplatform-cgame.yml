@@ -2,6 +2,8 @@ name: Bombas cross-platform native cgame
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 
 jobs:
   linux:
@@ -80,6 +82,7 @@ jobs:
         with:
           pattern: "*"
           path: binaries
+          merge-multiple: false
       - name: Create verified auto-download PK3
         run: python3 tools/bombas/package_crossplatform.py --artifacts binaries --output dist
       - uses: actions/upload-artifact@v4

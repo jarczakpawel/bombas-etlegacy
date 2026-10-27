@@ -30,8 +30,12 @@ for platform, filename in required.items():
         raise ValueError(f'Invalid PE binary: {path}')
     if platform.startswith('linux') and not data.startswith(b'\x7fELF'):
         raise ValueError(f'Invalid ELF binary: {path}')
-    if platform == 'macos' and data[:4] not in (b'\xca\xfe\xba\xbe', b'\xca\xfe\xba\xbf', b'\xcf\xfa\xed\xfe', b'\xfe\xed\xfa\xcf'):
-        raise ValueError(f'Invalid Mach-O binary: {path}')
+    if platform == 'macos' and data[:4] not in (b'\xca\xfe\xba\xbe', b'\xca\xfe\xba\xbf', b'\xcf\xfa\xed\xfe', b'\xfe\xed\xfa\xcf', b'PK\x03\x04'):
+        raise ValueError(f'Invalid macOS binary or bundle: {path}')
+    if platform == 'macos' and data.startswith(b'PK\x03\x04'):
+        with zipfile.ZipFile(path) as packed:
+            if packed.testzip() is not None or not any(x.endswith('/Contents/MacOS/cgame_mac') for x in packed.namelist()):
+                raise ValueError(f'Invalid macOS bundle: {path}')
     files[filename] = data
     checksums[platform] = hashlib.sha256(data).hexdigest()
 
