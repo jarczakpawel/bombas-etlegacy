@@ -3370,14 +3370,20 @@ void ClientSpawn(gentity_t *ent, qboolean revived, qboolean teamChange, qboolean
 		}
 	}
 
-	if (!revived && G_BombasMolotovWeapon(
-	        client->sess.sessionTeam == TEAM_AXIS ? WP_GRENADE_PINEAPPLE : WP_GRENADE_LAUNCHER,
-	        client->sess.sessionTeam))
+	if (!revived && (client->sess.sessionTeam == TEAM_AXIS || client->sess.sessionTeam == TEAM_ALLIES))
 	{
+		weapon_t normal = client->sess.sessionTeam == TEAM_AXIS ? WP_GRENADE_LAUNCHER : WP_GRENADE_PINEAPPLE;
 		weapon_t bottle = client->sess.sessionTeam == TEAM_AXIS ? WP_GRENADE_PINEAPPLE : WP_GRENADE_LAUNCHER;
-		COM_BitSet(client->ps.weapons, bottle);
-		client->ps.ammo[GetWeaponTableData(bottle)->ammoIndex] = 1;
-		client->ps.ammoclip[GetWeaponTableData(bottle)->clipIndex] = 1;
+
+		if (COM_BitCheck(client->ps.weapons, normal) && G_BombasMolotovWeapon(bottle, client->sess.sessionTeam))
+		{
+			COM_BitSet(client->ps.weapons, bottle);
+			client->ps.ammo[GetWeaponTableData(bottle)->ammoIndex] = 1;
+			client->ps.ammoclip[GetWeaponTableData(bottle)->clipIndex] = 1;
+#ifdef FEATURE_OMNIBOT
+			Bot_Event_AddWeapon(client->ps.clientNum, Bot_WeaponGameToBot(bottle));
+#endif
+		}
 	}
 
 	// client has (almost) no say in weapon selection when spawning
