@@ -1,5 +1,8 @@
 name: Bombas cross-platform native cgame
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
   push:
