@@ -138,7 +138,7 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position)
     VectorCopy(position, start);
     VectorCopy(position, end);
     start[2] += 8.f;
-    end[2] -= 56.f;
+    end[2] -= 256.f;
     trap_Trace(&ground, start, NULL, NULL, end, missile->s.number, MASK_SOLID);
 
     if (ground.fraction < 1.f && ground.plane.normal[2] >= 0.5f)
@@ -1049,7 +1049,8 @@ void G_BurnTarget(gentity_t *self, gentity_t *body, qboolean directhit)
 		//if( !self->count2 && body == self->parent )
 		//  return;
 
-		if (!(g_friendlyFire.integer) && OnSameTeam(body, self->parent))
+		if (!(g_friendlyFire.integer) && OnSameTeam(body, self->parent) &&
+		    !(body == self->parent && self->classname && !Q_stricmp(self->classname, "bombas_molotov_fire")))
 		{
 			return;
 		}
@@ -1098,7 +1099,8 @@ void G_BurnTarget(gentity_t *self, gentity_t *body, qboolean directhit)
 	dist = VectorLength(v);
 
 	// The person who shot the flame only burns when within 1/2 the radius
-	if (body->s.number == self->r.ownerNum && dist >= (radius * 0.5f))
+	if (body->s.number == self->r.ownerNum && dist >= (radius * 0.5f) &&
+	    !(self->classname && !Q_stricmp(self->classname, "bombas_molotov_fire")))
 	{
 		return;
 	}

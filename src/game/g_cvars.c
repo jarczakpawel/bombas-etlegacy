@@ -407,7 +407,7 @@ cvarTable_t gameCvarTable[] =
 	{ &g_synchronousClients,              "g_synchronousClients",              "0",                          CVAR_SYSTEMINFO | CVAR_CHEAT,                    0, qfalse, qfalse },
 #endif // ALLOW_GSYNC
 
-	{ &g_friendlyFire,                    "g_friendlyFire",                    "1",                          CVAR_SERVERINFO | CVAR_ARCHIVE,                  0, qtrue,  qtrue  },
+	{ &g_friendlyFire,                    "g_friendlyFire",                    "0",                          CVAR_SERVERINFO | CVAR_ARCHIVE,                  0, qtrue,  qtrue  },
 
 	{ &g_teamForceBalance,                "g_teamForceBalance",                "0",                          CVAR_ARCHIVE,                                    0, qfalse, qfalse },     // merge from team arena
 

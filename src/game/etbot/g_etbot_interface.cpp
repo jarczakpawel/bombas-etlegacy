@@ -316,6 +316,10 @@ static qboolean weaponCharged(playerState_t *ps, team_t team, int weapon, const 
 	{
 	case WP_BAZOOKA:
 	case WP_PANZERFAUST:
+		if (g_bombasMode.integer == 1)
+		{
+			return (!(ps->eFlags & EF_PRONE) && WC_WEAPON_TIME_LEFT >= (BG_IsSkillAvailable(skill, SK_HEAVY_WEAPONS, SK_SOLDIER_PROJECTILE_STAMINA) ? 792 : 1200)) ? qtrue : qfalse;
+		}
 		if (ps->eFlags & EF_PRONE)
 		{
 			return qfalse;
