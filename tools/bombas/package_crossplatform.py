@@ -13,8 +13,8 @@ args = parser.parse_args()
 required = {
     'linux64': 'cgame.mp.x86_64.so',
     'linux32': 'cgame.mp.i386.so',
-    'windows64': 'cgame.mp.x86_64.dll',
-    'windows32': 'cgame.mp.i386.dll',
+    'windows64': 'cgame_mp_x64.dll',
+    'windows32': 'cgame_mp_x86.dll',
     'macos': 'cgame_mac',
 }
 files = {}
