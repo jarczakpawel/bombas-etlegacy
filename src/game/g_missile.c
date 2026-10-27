@@ -50,7 +50,7 @@ qboolean G_BombasMolotovWeapon(int weapon, team_t team)
         "models/bombas/molotov/fire_patch.md3",
         "models/bombas/molotov/grenade_combined.md3",
         "models/bombas/molotov/pineapple_combined.md3",
-        "models/bombas/medic/nitro_label.tga"
+        "models/bombas/medic/nitro_label.jpg"
     };
     fileHandle_t file;
     int i;
@@ -110,6 +110,8 @@ static void G_BombasMolotovFireThink(gentity_t *fire)
         return;
     }
 
+    fire->s.constantLight = ((38 + ((level.time / 110 + fire->s.number * 3) % 9)) << 24) |
+                            (22 << 16) | (112 << 8) | 255;
     G_FlameDamage(fire, NULL);
     fire->nextthink = level.time + FRAMETIME;
 }
@@ -160,6 +162,8 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position)
     fire->classname = "bombas_molotov_fire";
     fire->s.eType = ET_GENERAL;
     fire->s.modelindex = G_ModelIndex("models/bombas/molotov/fire_patch.md3");
+    fire->s.loopSound = G_SoundIndex("sound/world/fire_01.wav");
+    fire->s.constantLight = (42 << 24) | (22 << 16) | (112 << 8) | 255;
     fire->s.pos.trType = TR_STATIONARY;
     fire->r.svFlags |= SVF_BROADCAST;
     fire->r.ownerNum = missile->r.ownerNum;
