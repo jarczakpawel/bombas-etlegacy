@@ -47,7 +47,6 @@ void G_FlameDamage(gentity_t *self, gentity_t *ignoreent);
 qboolean G_BombasMolotovWeapon(int weapon, team_t team)
 {
     static const char *assets[] = {
-        "models/bombas/molotov/fire_patch.md3",
         "models/bombas/molotov/grenade_combined.md3",
         "models/bombas/molotov/pineapple_combined.md3",
         "models/bombas/medic/nitro_label.jpg"
@@ -113,6 +112,13 @@ static void G_BombasMolotovFireThink(gentity_t *fire)
     fire->s.constantLight = ((38 + ((level.time / 110 + fire->s.number * 3) % 9)) << 24) |
                             (22 << 16) | (112 << 8) | 255;
     G_FlameDamage(fire, NULL);
+    if (level.time >= fire->delay)
+    {
+        VectorSet(fire->s.apos.trBase, -65.f, (float)((fire->key * 137) % 360), 0.f);
+        G_AddEvent(fire, EV_FLAMETHROWER_EFFECT, 0);
+        fire->key++;
+        fire->delay = level.time + 70;
+    }
     fire->nextthink = level.time + FRAMETIME;
 }
 
@@ -161,10 +167,12 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position)
     fire = G_Spawn();
     fire->classname = "bombas_molotov_fire";
     fire->s.eType = ET_GENERAL;
-    fire->s.modelindex = G_ModelIndex("models/bombas/molotov/fire_patch.md3");
+    fire->s.modelindex = 0;
     fire->s.loopSound = G_SoundIndex("sound/world/fire_01.wav");
     fire->s.constantLight = (42 << 24) | (22 << 16) | (112 << 8) | 255;
     fire->s.pos.trType = TR_STATIONARY;
+    fire->s.apos.trType = TR_STATIONARY;
+    fire->delay = level.time;
     fire->r.svFlags |= SVF_BROADCAST;
     fire->r.ownerNum = missile->r.ownerNum;
     fire->parent = owner;
