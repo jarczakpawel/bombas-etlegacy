@@ -80,6 +80,7 @@
 
 	// ingame
 	loadMenu { "ui/ingame_main.menu" }
+	loadMenu { "ui/ingame_bombas.menu" }
 	loadMenu { "ui/ingame_vote.menu" }
 	loadMenu { "ui/ingame_vote_disabled.menu" }
 	loadMenu { "ui/ingame_vote_misc.menu" }

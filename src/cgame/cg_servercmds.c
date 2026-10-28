@@ -1847,6 +1847,8 @@ void CG_AddBufferedVoiceChat(bufferedVoiceChat_t *vchat)
  * @param[in] cmd
  * @param[in] origin
  */
+void CG_BombasVoicePlay(const char *id, int team, double randomNum, int vsayNum, voiceChatList_t *list);
+
 void CG_VoiceChatLocal(int mode, qboolean voiceOnly, int clientNum, const char *cmd, vec3_t origin, double randomNum, int vsayNum, char *customMessage)
 {
 	char            *chat;
@@ -1875,6 +1877,10 @@ void CG_VoiceChatLocal(int mode, qboolean voiceOnly, int clientNum, const char *
 		{
 			bufferedVoiceChat_t vchat;
 			const char          *loc = " ";
+			if (clientNum == cg.clientNum)
+			{
+				CG_BombasVoicePlay(cmd, cgs.clientinfo[clientNum].team, randomNum, vsayNum, voiceChatList);
+			}
 
 			vchat.clientNum = clientNum;
 			vchat.snd       = snd;
@@ -3028,11 +3034,11 @@ void CG_AddToBannerPrint(const char *str)
  */
 /* Bombas ET: Legacy client overlay - compiled into the standard downloaded cgame module. */
 #define BOMBAS_MAX_FRAMES 720  // 60 s at 12 FPS; bounded for older hardware
-#define BOMBAS_CACHE_ENTRIES 2
+#define BOMBAS_CACHE_ENTRIES 4
 
 typedef struct {
     int start, count, fps, position, width, height;
-    int sourceWidth, sourceHeight, keepRatio, safePct, lastTime, captionPosition;
+    int sourceWidth, sourceHeight, keepRatio, safePct, lastTime, captionPosition, fontPct;
     char caption[161];
     qhandle_t frames[BOMBAS_MAX_FRAMES];
 } bombasEvent_t;
@@ -3044,20 +3050,42 @@ typedef struct {
     sfxHandle_t sound;
 } bombasClipCache_t;
 
-static bombasEvent_t bombasEvent;
+static bombasEvent_t bombasEvents[2];
 static bombasClipCache_t bombasClips[BOMBAS_CACHE_ENTRIES];
 static int bombasNextClip;
-static char bombasEventKey[25];
+static char bombasEventKeys[2][25];
+static qboolean bombasPrefsRegistered;
+static vmCvar_t bombasScaleCvar, bombasEventsCvar, bombasVoiceCvar;
+static float CG_BombasCvarValue(const char *name)
+{
+    char value[32];
+    trap_Cvar_VariableStringBuffer(name, value, sizeof(value));
+    return (float)atof(value);
+}
+
+static void CG_BombasVideoPreferences(void)
+{
+    if (bombasPrefsRegistered) return;
+    trap_Cvar_Register(&bombasScaleCvar, "cg_bombasVideoScale", "100", CVAR_ARCHIVE);
+    trap_Cvar_Register(&bombasEventsCvar, "cg_bombasEventsVideo", "1", CVAR_ARCHIVE);
+    trap_Cvar_Register(&bombasVoiceCvar, "cg_bombasVoiceVideo", "1", CVAR_ARCHIVE);
+    bombasPrefsRegistered = qtrue;
+}
+
 
 void CG_BombasEvent_Receive(void)
 {
     char key[32], path[MAX_QPATH];
+    int slot = !Q_stricmp(CG_Argv(0), "bombas_voice") ? 1 : 0;
+    bombasEvent_t *ev = &bombasEvents[slot];
     bombasClipCache_t *clip = NULL;
     int i, count, fps, position, width, height, keepRatio;
-    int sourceWidth, sourceHeight, hasSound, safePct, captionPosition;
+    int sourceWidth, sourceHeight, hasSound, safePct, captionPosition, fontPct;
     const char *hex;
+    CG_BombasVideoPreferences();
+    if (CG_BombasCvarValue(slot ? "cg_bombasVoiceVideo" : "cg_bombasEventsVideo") == 0.f) return;
 
-    if (trap_Argc() != 12 && trap_Argc() != 14) return;
+    if (trap_Argc() != 12 && trap_Argc() != 14 && trap_Argc() != 15) return;
     Q_strncpyz(key, CG_Argv(1), sizeof(key));
     if (strlen(key) != 24) return;
     for (i = 0; i < 24; i++) {
@@ -3069,16 +3097,17 @@ void CG_BombasEvent_Receive(void)
     height = Q_atoi(CG_Argv(6)); keepRatio = Q_atoi(CG_Argv(7));
     sourceWidth = Q_atoi(CG_Argv(8)); sourceHeight = Q_atoi(CG_Argv(9));
     hasSound = Q_atoi(CG_Argv(10)); safePct = Q_atoi(CG_Argv(11));
-    captionPosition = trap_Argc() == 14 ? Q_atoi(CG_Argv(12)) : 0;
-    hex = trap_Argc() == 14 ? CG_Argv(13) : "-";
-    if (captionPosition < 0 || captionPosition > 4) return;
+    captionPosition = trap_Argc() >= 14 ? Q_atoi(CG_Argv(12)) : 0;
+    fontPct = trap_Argc() == 15 ? Q_atoi(CG_Argv(14)) : 100;
+    hex = trap_Argc() >= 14 ? CG_Argv(13) : "-";
+    if (captionPosition < 0 || captionPosition > 4 || fontPct < 50 || fontPct > 200) return;
     if (count < 1 || count > BOMBAS_MAX_FRAMES || fps != 12 ||
         position < 0 || position > 7 || width < 10 || width > 70 ||
         height < 10 || height > 65 || sourceWidth < 2 || sourceWidth > 256 ||
         sourceHeight < 2 || sourceHeight > 256 || safePct < 0 || safePct > 15 ||
         (keepRatio != 0 && keepRatio != 1) || (hasSound != 0 && hasSound != 1)) return;
-    if (bombasEvent.lastTime > 0 && cg.time >= bombasEvent.lastTime &&
-        cg.time - bombasEvent.lastTime < 1000) return;
+    if (ev->lastTime > 0 && cg.time >= ev->lastTime &&
+        cg.time - ev->lastTime < 1000) return;
 
     for (i = 0; i < BOMBAS_CACHE_ENTRIES; i++) {
         if (!Q_stricmp(bombasClips[i].key, key) && bombasClips[i].count == count) {
@@ -3095,21 +3124,22 @@ void CG_BombasEvent_Receive(void)
         // in one server command would cause a long game-frame stall.
         // Register only the visible frame while the clip plays.
     }
-    Q_strncpyz(bombasEventKey, key, sizeof(bombasEventKey));
-    bombasEvent.count = count;
-    bombasEvent.fps = fps;
-    bombasEvent.position = position;
-    bombasEvent.width = width;
-    bombasEvent.height = height;
-    bombasEvent.keepRatio = keepRatio;
-    bombasEvent.sourceWidth = sourceWidth;
-    bombasEvent.sourceHeight = sourceHeight;
-    bombasEvent.safePct = safePct;
-    bombasEvent.captionPosition = captionPosition;
-    bombasEvent.caption[0] = '\0';
+    Q_strncpyz(bombasEventKeys[slot], key, sizeof(bombasEventKeys[slot]));
+    ev->count = count;
+    ev->fps = fps;
+    ev->position = position;
+    ev->width = width;
+    ev->height = height;
+    ev->keepRatio = keepRatio;
+    ev->sourceWidth = sourceWidth;
+    ev->sourceHeight = sourceHeight;
+    ev->safePct = safePct;
+    ev->captionPosition = captionPosition;
+    ev->fontPct = fontPct;
+    ev->caption[0] = '\0';
     if (captionPosition && hex[0] != '-' && strlen(hex) <= 320 && !(strlen(hex) & 1)) {
         size_t j, length = strlen(hex) / 2;
-        if (length > sizeof(bombasEvent.caption) - 1) return;
+        if (length > sizeof(ev->caption) - 1) return;
         for (j = 0; j < length; j++) {
             char part[3] = {hex[j * 2], hex[j * 2 + 1], '\0'};
             int val;
@@ -3117,13 +3147,13 @@ void CG_BombasEvent_Receive(void)
             if (!isxdigit((unsigned char)part[1])) break;
             val = (int)strtol(part, NULL, 16);
             if (val == 0 || val == '\n' || val == '\r') break;
-            bombasEvent.caption[j] = (char)val;
+            ev->caption[j] = (char)val;
         }
-        bombasEvent.caption[j] = '\0';
+        ev->caption[j] = '\0';
     }
-    Com_Memcpy(bombasEvent.frames, clip->frames, sizeof(bombasEvent.frames));
-    bombasEvent.start = cg.time;
-    bombasEvent.lastTime = cg.time;
+    Com_Memcpy(ev->frames, clip->frames, sizeof(ev->frames));
+    ev->start = cg.time;
+    ev->lastTime = cg.time;
 
     if (hasSound) {
         if (!clip->sound) {
@@ -3134,67 +3164,70 @@ void CG_BombasEvent_Receive(void)
     }
 }
 
-void CG_BombasEvent_Draw(void)
+static void CG_BombasEvent_DrawSlot(int slot)
 {
     int frame;
+    bombasEvent_t *ev = &bombasEvents[slot];
     float screenW, screenH, aspect, marginX, marginY, boxW, boxH, scale, x, y;
     float drawW, drawH;
     char path[MAX_QPATH];
     bombasClipCache_t *clip = NULL;
     int j;
-    if (!bombasEvent.count || !cg.snap) return;
-    frame = (cg.time - bombasEvent.start) * bombasEvent.fps / 1000;
-    if (frame < 0 || frame >= bombasEvent.count) {
-        bombasEvent.count = 0;
+    CG_BombasVideoPreferences();
+    if (CG_BombasCvarValue(slot ? "cg_bombasVoiceVideo" : "cg_bombasEventsVideo") == 0.f) return;
+    if (!ev->count || !cg.snap) return;
+    frame = (cg.time - ev->start) * ev->fps / 1000;
+    if (frame < 0 || frame >= ev->count) {
+        ev->count = 0;
         return;
     }
-    if (!bombasEvent.frames[frame]) {
+    if (!ev->frames[frame]) {
         for (j = 0; j < BOMBAS_CACHE_ENTRIES; j++) {
-            if (!Q_stricmp(bombasClips[j].key, bombasEventKey) && bombasClips[j].count == bombasEvent.count) {
+            if (!Q_stricmp(bombasClips[j].key, bombasEventKeys[slot]) && bombasClips[j].count == ev->count) {
                 clip = &bombasClips[j]; break;
             }
         }
         if (!clip) return;
         Com_sprintf(path, sizeof(path), "gfx/bombas/events/%s/f%04d.jpg", clip->key, frame+1);
-        bombasEvent.frames[frame] = trap_R_RegisterShaderNoMip(path);
-        clip->frames[frame] = bombasEvent.frames[frame];
-        if (!bombasEvent.frames[frame]) return;
+        ev->frames[frame] = trap_R_RegisterShaderNoMip(path);
+        clip->frames[frame] = ev->frames[frame];
+        if (!ev->frames[frame]) return;
     }
     screenW = (float)cgs.glconfig.vidWidth;
     screenH = (float)cgs.glconfig.vidHeight;
     if (screenW <= 0.f || screenH <= 0.f) return;
-    aspect = (float)bombasEvent.sourceWidth / (float)bombasEvent.sourceHeight;
-    marginX = screenW * bombasEvent.safePct / 100.f;
-    marginY = screenH * bombasEvent.safePct / 100.f;
-    boxW = screenW * bombasEvent.width / 100.f;
+    aspect = (float)ev->sourceWidth / (float)ev->sourceHeight;
+    marginX = screenW * ev->safePct / 100.f;
+    marginY = screenH * ev->safePct / 100.f;
+    boxW = screenW * ev->width / 100.f;
     {
-        float userSize = trap_Cvar_VariableValue("cg_bombasVideoScale");
+        float userSize = CG_BombasCvarValue("cg_bombasVideoScale");
         if (userSize != 50.f && userSize != 75.f && userSize != 125.f) userSize = 100.f;
         boxW *= userSize / 100.f;
     }
-    boxH = bombasEvent.keepRatio ? boxW / aspect : screenH * bombasEvent.height / 100.f;
+    boxH = ev->keepRatio ? boxW / aspect : screenH * ev->height / 100.f;
     scale = 1.f;
     if (boxW > screenW - 2.f * marginX) scale = (screenW - 2.f * marginX) / boxW;
     if (boxH * scale > screenH - 2.f * marginY) scale = (screenH - 2.f * marginY) / boxH;
     boxW *= scale; boxH *= scale;
-    x = bombasEvent.position == 1 || bombasEvent.position == 6 ? (screenW - boxW) * .5f :
-        (bombasEvent.position == 2 || bombasEvent.position == 4 || bombasEvent.position == 7 ? screenW - marginX - boxW : marginX);
-    y = bombasEvent.position < 3 ? marginY :
-        (bombasEvent.position < 5 ? (screenH - boxH) * .5f : screenH - marginY - boxH);
+    x = ev->position == 1 || ev->position == 6 ? (screenW - boxW) * .5f :
+        (ev->position == 2 || ev->position == 4 || ev->position == 7 ? screenW - marginX - boxW : marginX);
+    y = ev->position < 3 ? marginY :
+        (ev->position < 5 ? (screenH - boxH) * .5f : screenH - marginY - boxH);
     drawW = boxW;
     drawH = drawW / aspect;
     if (drawH > boxH) { drawH = boxH; drawW = drawH * aspect; }
     x += (boxW - drawW) * .5f; y += (boxH - drawH) * .5f;
     trap_R_SetColor(NULL);
-    trap_R_DrawStretchPic(x, y, drawW, drawH, 0.f, 0.f, 1.f, 1.f, bombasEvent.frames[frame]);
-    if (bombasEvent.captionPosition && bombasEvent.caption[0]) {
+    trap_R_DrawStretchPic(x, y, drawW, drawH, 0.f, 0.f, 1.f, 1.f, ev->frames[frame]);
+    if (ev->captionPosition && ev->caption[0]) {
         float textX = screenW * .5f, textY = screenH * .10f;
         float fy;
-        if (bombasEvent.captionPosition == 2) textY = screenH * .50f;
-        if (bombasEvent.captionPosition == 3) {
+        if (ev->captionPosition == 2) textY = screenH * .50f;
+        if (ev->captionPosition == 3) {
             textX = x + drawW * .5f; textY = y - screenH * .018f;
         }
-        if (bombasEvent.captionPosition == 4) {
+        if (ev->captionPosition == 4) {
             textX = x + drawW * .5f; textY = y + drawH + screenH * .034f;
         }
         if (textY < screenH * .035f) textY = screenH * .035f;
@@ -3203,9 +3236,109 @@ void CG_BombasEvent_Draw(void)
         // Text renderer uses 640x480 virtual coordinates, unlike the raw
         // pixel-based video renderer; preserve centering on widescreen.
         CG_Text_Paint_Centred_Ext(textX * SCREEN_WIDTH / screenW, fy,
-                                 .29f, .29f, colorWhite, bombasEvent.caption,
+                                 .29f * ev->fontPct / 100.f, .29f * ev->fontPct / 100.f, colorWhite, ev->caption,
                                  0, 0, ITEM_TEXTSTYLE_SHADOWED, &cgs.media.limboFont2);
     }
+}
+
+
+void CG_BombasEvent_Draw(void)
+{
+    CG_BombasEvent_DrawSlot(0);
+    CG_BombasEvent_DrawSlot(1);
+}
+
+#define BOMBAS_VOICE_MAX 300
+typedef struct {
+    int team, index, count, width, height, position, widthPct;
+    char id[65], key[25];
+} bombasVoiceVideo_t;
+static bombasVoiceVideo_t bombasVoiceTable[BOMBAS_VOICE_MAX];
+static int bombasVoiceCount;
+static qboolean bombasVoiceLoaded;
+
+static void CG_BombasVoiceLoad(void)
+{
+    fileHandle_t file;
+    int length;
+    static char buffer[65536];
+    char *line;
+    if (bombasVoiceLoaded) return;
+    bombasVoiceLoaded = qtrue;
+    length = trap_FS_FOpenFile("bombas/voice_video.cfg", &file, FS_READ);
+    if (length < 1 || length >= sizeof(buffer)) {
+        if (length >= 0) trap_FS_FCloseFile(file);
+        return;
+    }
+    trap_FS_Read(buffer, length, file);
+    trap_FS_FCloseFile(file);
+    buffer[length] = '\0';
+    for (line = strtok(buffer, "\n\r"); line && bombasVoiceCount < BOMBAS_VOICE_MAX;
+         line = strtok(NULL, "\n\r")) {
+        bombasVoiceVideo_t row;
+        int j;
+        if (sscanf(line, "%d %64s %d %24s %d %d %d %d %d", &row.team, row.id,
+                   &row.index, row.key, &row.count, &row.width, &row.height,
+                   &row.position, &row.widthPct) != 9) continue;
+        if (row.team < 1 || row.team > 2 || row.index < 0 || row.index > 31 ||
+            row.count < 1 || row.count > BOMBAS_MAX_FRAMES || row.width < 2 || row.width > 256 ||
+            row.height < 2 || row.height > 256 || row.position < 0 || row.position > 7 ||
+            row.widthPct < 10 || row.widthPct > 70 || strlen(row.key) != 24 ||
+            strlen(row.id) < 1) continue;
+        for (j = 0; j < 24; j++) if (!((row.key[j] >= 'a' && row.key[j] <= 'f') ||
+                                               (row.key[j] >= '0' && row.key[j] <= '9'))) break;
+        if (j != 24) continue;
+        bombasVoiceTable[bombasVoiceCount++] = row;
+    }
+}
+
+void CG_BombasVoicePlay(const char *id, int team, double randomNum, int vsayNum, voiceChatList_t *list)
+{
+    int i, j, n = 0, slot;
+    bombasEvent_t *ev = &bombasEvents[1];
+    bombasVoiceVideo_t *meta = NULL;
+    bombasClipCache_t *clip = NULL;
+    CG_BombasVideoPreferences();
+    if (CG_BombasCvarValue("cg_bombasVoiceVideo") == 0.f || !list) return;
+    CG_BombasVoiceLoad();
+    if (!bombasVoiceCount) return;
+    for (i = 0; i < list->numVoiceChats; i++) {
+        if (!Q_stricmp(id, list->voiceChats[i].id)) {
+            n = list->voiceChats[i].numSounds;
+            break;
+        }
+    }
+    if (n <= 0) return;
+    slot = (vsayNum >= 0 && vsayNum < n) ? vsayNum : (int)(randomNum * n);
+    if (slot < 0) slot = 0;
+    if (slot >= n) slot = n - 1;
+    for (i = 0; i < bombasVoiceCount; i++) {
+        if (bombasVoiceTable[i].team == (team == TEAM_AXIS ? 1 : 2) &&
+            bombasVoiceTable[i].index == slot && !Q_stricmp(bombasVoiceTable[i].id, id)) {
+            meta = &bombasVoiceTable[i];
+            break;
+        }
+    }
+    if (!meta) return;
+    for (i = 0; i < BOMBAS_CACHE_ENTRIES; i++) {
+        if (bombasClips[i].count == meta->count && !Q_stricmp(bombasClips[i].key, meta->key)) {
+            clip = &bombasClips[i]; break;
+        }
+    }
+    if (!clip) {
+        clip = &bombasClips[bombasNextClip++ % BOMBAS_CACHE_ENTRIES];
+        Com_Memset(clip, 0, sizeof(*clip));
+        Q_strncpyz(clip->key, meta->key, sizeof(clip->key));
+        clip->count = meta->count;
+    }
+    Q_strncpyz(bombasEventKeys[1], meta->key, sizeof(bombasEventKeys[1]));
+    ev->count = meta->count; ev->fps = 12; ev->position = meta->position;
+    ev->width = meta->widthPct; ev->height = 36; ev->keepRatio = 1;
+    ev->sourceWidth = meta->width; ev->sourceHeight = meta->height;
+    ev->safePct = 4; ev->captionPosition = 0; ev->caption[0] = '\0';
+    ev->fontPct = 100;
+    Com_Memcpy(ev->frames, clip->frames, sizeof(ev->frames));
+    ev->start = cg.time;ev->lastTime = cg.time;
 }
 
 static void CG_ServerCommand(void)
@@ -3214,7 +3347,7 @@ static void CG_ServerCommand(void)
 	long       hash = 0;
 
 	cmd = CG_Argv(0);
-	if (!Q_stricmp(cmd, "bombas_evt"))
+	if (!Q_stricmp(cmd, "bombas_evt") || !Q_stricmp(cmd, "bombas_voice"))
 	{
 		CG_BombasEvent_Receive();
 		return;

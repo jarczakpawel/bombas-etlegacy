@@ -39,6 +39,10 @@ for platform, filename in required.items():
     files[filename] = data
     checksums[platform] = hashlib.sha256(data).hexdigest()
 
+for name in ('menus.txt', 'ingame_main.menu', 'ingame_bombas.menu'):
+    path = Path(__file__).resolve().parents[2] / 'etmain' / 'ui' / name
+    files['ui/' + name] = path.read_bytes()
+
 for name in ('pt1_strt.wav', 'pt1_end.wav'):
     path = Path(__file__).parent / 'assets' / name
     payload = path.read_bytes()
