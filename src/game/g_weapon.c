@@ -333,6 +333,30 @@ void ReviveEntityEvent(gentity_t *reviver, gentity_t *revivee, int invulnEndTime
 }
 
 /**
+ * @brief Play the same short V21 variant used by poison to the syringe
+ *        user and their target, independently of proximity and team voice.
+ *        No sound on a missed syringe or refused/no-effect healing.
+ */
+static void G_BombasSyringeVoiceForBoth(gentity_t *medic, gentity_t *patient)
+{
+	int voice;
+
+	if (!medic || !patient || !medic->client || !patient->client)
+	{
+		return;
+	}
+
+	voice = G_SoundIndex(medic->client->sess.sessionTeam == TEAM_AXIS ?
+	    "sound/bombas/poison/v21_short_axis.wav" :
+	    "sound/bombas/poison/v21_short_allies.wav");
+	G_ClientSound(medic, voice);
+	if (medic != patient)
+	{
+		G_ClientSound(patient, voice);
+	}
+}
+
+/**
  * @brief Took this out of Weapon_Syringe so we can use it from other places
  * @param[in] ent - Syringe user
  * @param[in,out] traceEnt - PM_DEAD target
@@ -467,6 +491,7 @@ static qboolean G_TrySyringeHeal(gentity_t *healer, gentity_t *target, qboolean 
 	{
 		target->client->bombasPoisonUntil = 0;
 		G_Sound(target, GAMESOUND_MISC_REVIVE);
+		G_BombasSyringeVoiceForBoth(healer, target);
 		trap_SendServerCommand(target - g_entities, "cp \"^2Poison cured!^7\"");
 		return qtrue;
 	}
@@ -483,6 +508,7 @@ static qboolean G_TrySyringeHeal(gentity_t *healer, gentity_t *target, qboolean 
 	target->client->pers.lasthealth_client = healer->s.clientNum;
 
 	G_Sound(target, GAMESOUND_MISC_REVIVE);
+	G_BombasSyringeVoiceForBoth(healer, target);
 	G_AddSkillPoints(healer, SK_FIRST_AID, 2.f, "healing");
 
 	return qtrue;
@@ -571,15 +597,11 @@ gentity_t *Weapon_Syringe(gentity_t *ent)
 	    (traceEnt->client->sess.sessionTeam == TEAM_AXIS ||
 	     traceEnt->client->sess.sessionTeam == TEAM_ALLIES))
 	{
-		int voice = G_SoundIndex(ent->client->sess.sessionTeam == TEAM_AXIS ?
-		    "sound/bombas/poison/v21_short_axis.wav" :
-		    "sound/bombas/poison/v21_short_allies.wav");
 		traceEnt->client->bombasPoisonUntil = level.time + 30000;
 		traceEnt->client->bombasPoisonNextTick = level.time + 1000;
 		traceEnt->client->bombasPoisonAttacker = ent->s.number;
 		traceEnt->client->bombasPoisonAttackerEnterTime = ent->client->pers.enterTime;
-		G_ClientSound(ent, voice);
-		G_ClientSound(traceEnt, voice);
+		G_BombasSyringeVoiceForBoth(ent, traceEnt);
 		trap_SendServerCommand(ent - g_entities, "cp \"^2Enemy poisoned!^7\"");
 		trap_SendServerCommand(traceEnt - g_entities, "cp \"^1Poisoned! Find a health pack!^7\"");
 		G_LogPrintf("Bombas_Poison: %d %d\n", ent->s.number, traceEnt->s.number);
@@ -605,6 +627,7 @@ gentity_t *Weapon_Syringe(gentity_t *ent)
 	{
 		// moved all the revive stuff into its own function
 		ReviveEntity(ent, traceEnt);
+		G_BombasSyringeVoiceForBoth(ent, traceEnt);
 
 		// syringe "hit"
 		if (g_gamestate.integer == GS_PLAYING)
