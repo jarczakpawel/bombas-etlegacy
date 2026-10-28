@@ -103,6 +103,21 @@ static void G_BombasMolotovVisualThink(gentity_t *visual)
     visual->nextthink = level.time + 150;
 }
 
+/* Short cosmetic ignition flare; never participates in damage handling. */
+static void G_BombasMolotovIgnitionThink(gentity_t *effect)
+{
+    if (level.match_pause != PAUSE_NONE)
+    {
+        effect->timestamp += level.frameTime;
+    }
+    if (level.time >= effect->timestamp)
+    {
+        G_FreeEntity(effect);
+        return;
+    }
+    effect->nextthink = level.time + 75;
+}
+
 static void G_BombasMolotovFireThink(gentity_t *fire)
 {
     gentity_t *owner;
@@ -140,8 +155,15 @@ static void G_BombasMolotovFireThink(gentity_t *fire)
         fire->count = 1;
     }
 
-    fire->s.constantLight = ((25 + ((level.time / 110 + fire->s.number * 3) % 13)) << 24) |
-                            (24 << 16) | (116 << 8) | 255;
+    if (fire->timestamp - level.time > BOMBAS_MOLOTOV_LIFETIME - 440)
+    {
+        fire->s.constantLight = (65 << 24) | (35 << 16) | (170 << 8) | 255;
+    }
+    else
+    {
+        fire->s.constantLight = ((25 + ((level.time / 110 + fire->s.number * 3) % 13)) << 24) |
+                                (24 << 16) | (116 << 8) | 255;
+    }
     G_FlameDamage(fire, NULL);
     fire->nextthink = level.time + FRAMETIME;
 }
@@ -214,6 +236,20 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position, cons
     G_SetOrigin(fire, start);
     trap_LinkEntity(fire);
     G_Sound(fire, G_SoundIndex("sound/world/glassbreak1.wav"));
+    /* Transient 440 ms flash at the actual glass impact point. */
+    {
+        gentity_t *ignition = G_Spawn();
+        ignition->classname = "bombas_molotov_ignition";
+        ignition->s.eType = ET_GENERAL;
+        ignition->s.modelindex = G_ModelIndex("models/bombas/molotov/fire_ignition.md3");
+        ignition->r.svFlags |= SVF_BROADCAST;
+        ignition->s.pos.trType = TR_STATIONARY;
+        ignition->timestamp = level.time + 440;
+        ignition->think = G_BombasMolotovIgnitionThink;
+        ignition->nextthink = level.time + 75;
+        G_SetOrigin(ignition, start);
+        trap_LinkEntity(ignition);
+    }
 
     {
         int activeVisuals = 0;
@@ -237,10 +273,19 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position, cons
         gentity_t *visual;
         vec3_t point, floorEnd, losStart, losEnd, angles;
         trace_t patch, los;
-        float angle = (float)i * (2.f * (float)M_PI / 6.f) + (float)(missile->s.number % 5) * .29f;
-        float radius = (i % 2) ? 82.f : 54.f;
+        /* Irregular, elongated fuel splash, aligned with impact travel. */
+        float angle = (float)i * (2.f * (float)M_PI / 6.f) +
+                      (float)(missile->s.number % 5) * .29f +
+                      .23f * sinf((float)(missile->s.number * 3 + i * 11));
+        float radius = ((i % 2) ? 82.f : 54.f) *
+                       (0.90f + 0.12f * cosf((float)(missile->s.number + i * 7)));
+        float travelAngle = atan2f(missile->s.pos.trDelta[1], missile->s.pos.trDelta[0]);
+        float forward = cosf(angle) * radius * 1.16f;
+        float side = sinf(angle) * radius * .80f;
 
-        VectorSet(point, start[0] + cosf(angle) * radius, start[1] + sinf(angle) * radius, start[2] + 46.f);
+        VectorSet(point, start[0] + cosf(travelAngle) * forward - sinf(travelAngle) * side,
+                  start[1] + sinf(travelAngle) * forward + cosf(travelAngle) * side,
+                  start[2] + 46.f);
         VectorCopy(point, floorEnd);
         floorEnd[2] -= 104.f;
         trap_Trace(&patch, point, NULL, NULL, floorEnd, missile->s.number, MASK_SOLID);
@@ -261,8 +306,8 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position, cons
 
         visual = G_Spawn();
         visual->classname = "bombas_molotov_visual";
-        visual->s.eType = i < 2 ? ET_GENERAL : ET_INVISIBLE;
-        visual->wait = (float)(level.time + i * 180);
+        visual->s.eType = ET_INVISIBLE;
+        visual->wait = (float)(level.time + 70 + (int)(radius * 3.0f) + i * 35);
         visual->s.modelindex = G_ModelIndex("models/bombas/molotov/fire_lick_patch.md3");
         visual->r.svFlags |= SVF_BROADCAST;
         visual->s.pos.trType = TR_STATIONARY;
@@ -271,7 +316,7 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position, cons
         visual->nextthink = level.time + 150;
         patch.endpos[2] += 1.5f;
         G_SetOrigin(visual, patch.endpos);
-        VectorSet(angles, 0.f, angle * 180.f / (float)M_PI, 0.f);
+        VectorSet(angles, 0.f, (travelAngle + angle) * 180.f / (float)M_PI, 0.f);
         G_SetAngle(visual, angles);
         trap_LinkEntity(visual);
     }
