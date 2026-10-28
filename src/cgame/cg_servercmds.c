@@ -3167,6 +3167,11 @@ void CG_BombasEvent_Draw(void)
     marginX = screenW * bombasEvent.safePct / 100.f;
     marginY = screenH * bombasEvent.safePct / 100.f;
     boxW = screenW * bombasEvent.width / 100.f;
+    {
+        float userSize = trap_Cvar_VariableValue("cg_bombasVideoScale");
+        if (userSize != 50.f && userSize != 75.f && userSize != 125.f) userSize = 100.f;
+        boxW *= userSize / 100.f;
+    }
     boxH = bombasEvent.keepRatio ? boxW / aspect : screenH * bombasEvent.height / 100.f;
     scale = 1.f;
     if (boxW > screenW - 2.f * marginX) scale = (screenW - 2.f * marginX) / boxW;
