@@ -654,7 +654,6 @@ typedef struct
 	int skill[SK_NUM_SKILLS];                           ///< skill
 	int rank;                                           ///< rank
 	int medals[SK_NUM_SKILLS];
-	qboolean bombasLethalHeadshot;                          ///< medals
 
 	int referee;
 	int shoutcaster;
@@ -956,6 +955,7 @@ struct gclient_s
 	// the rest of the structure is private to game
 	clientPersistant_t pers;
 	clientSession_t sess;
+	qboolean bombasLethalHeadshot;
 
 	qboolean noclip;
 
