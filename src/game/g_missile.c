@@ -78,6 +78,27 @@ static qboolean G_BombasMolotovProjectile(const gentity_t *ent)
     return ent->classname && !Q_stricmp(ent->classname, "bombas_molotov");
 }
 
+/* The three flame models still use the original R32 geometry/shaders.
+ * Their 128 MD3 frames smoothly shrink only the flame heights while the
+ * original sprite animMap continues to flicker independently.
+ * All entities share one lifetime and their original spawn/impact layout. */
+#define BOMBAS_MOLOTOV_FIRE_FRAMES 128
+static int G_BombasMolotovFireFrame(const gentity_t *fire)
+{
+    int elapsed = BOMBAS_MOLOTOV_LIFETIME - (fire->timestamp - level.time);
+    int frame;
+    if (elapsed <= 0)
+    {
+        return 0;
+    }
+    if (elapsed >= BOMBAS_MOLOTOV_LIFETIME)
+    {
+        return BOMBAS_MOLOTOV_FIRE_FRAMES - 1;
+    }
+    frame = (elapsed * (BOMBAS_MOLOTOV_FIRE_FRAMES - 1)) / BOMBAS_MOLOTOV_LIFETIME;
+    return frame;
+}
+
 static void G_BombasMolotovVisualThink(gentity_t *visual)
 {
     if (level.time >= visual->timestamp ||
@@ -95,12 +116,10 @@ static void G_BombasMolotovVisualThink(gentity_t *visual)
     {
         visual->s.eType = ET_GENERAL;
     }
-    if (visual->timestamp - level.time <= 1300 && !visual->count)
-    {
-        visual->s.modelindex = G_ModelIndex("models/bombas/molotov/fire_embers.md3");
-        visual->count = 1;
-    }
-    visual->nextthink = level.time + 150;
+    /* No sudden jump to fire_embers: geometry itself shrinks over 128 levels.
+     * Update fast enough to avoid multi-frame leaps between snapshots. */
+    visual->s.frame = G_BombasMolotovFireFrame(visual);
+    visual->nextthink = level.time + 75;
 }
 
 static void G_BombasMolotovFireThink(gentity_t *fire)
@@ -134,11 +153,8 @@ static void G_BombasMolotovFireThink(gentity_t *fire)
         return;
     }
 
-    if (fire->timestamp - level.time <= 1300 && !fire->count)
-    {
-        fire->s.modelindex = G_ModelIndex("models/bombas/molotov/fire_embers.md3");
-        fire->count = 1;
-    }
+    /* Keep precisely the original flames, now lowering them in small steps. */
+    fire->s.frame = G_BombasMolotovFireFrame(fire);
 
     fire->s.constantLight = ((25 + ((level.time / 110 + fire->s.number * 3) % 13)) << 24) |
                             (24 << 16) | (116 << 8) | 255;
