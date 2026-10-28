@@ -2311,11 +2311,30 @@ char *ClientConnect(int clientNum, qboolean firstTime, qboolean isBot)
 			// check duplicate guid with validated clients
 			for (i = 0; i < level.numConnectedClients; i++)
 			{
-				gclient_t *cl = level.clients + level.sortedClients[i];
+				int       otherClientNum = level.sortedClients[i];
+				gclient_t *cl = level.clients + otherClientNum;
+
+				// On a map change or reconnect, the engine can reuse the player's
+				// slot while the old client is still in sortedClients. Do not
+				// reject a reconnect for matching its own etkey.
+				if (otherClientNum == clientNum)
+				{
+					continue;
+				}
 
 				if (!Q_strncmp(cl->pers.cl_guid, cs_guid, MAX_GUID_LENGTH + 1))
 				{
-					return "Bad GUID: Duplicate etkey.";
+					// Replace a lingering session only from the same client IP.
+					// Never let a leaked GUID on a different IP evict a live player.
+					if (cl->pers.client_ip[0] && cs_ip[0] &&
+					    CompareIPNoPort(cl->pers.client_ip, cs_ip))
+					{
+						G_Printf("Bombas: replacing duplicate etkey session in slot %d with new connection %d\n",
+						         otherClientNum, clientNum);
+						trap_DropClient(otherClientNum, "Previous session replaced after reconnect", 0);
+						continue;
+					}
+					return "Bad GUID: Duplicate etkey on another connection.";
 				}
 			}
 		}
