@@ -625,7 +625,7 @@ void player_die(gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int 
 	}
 
 #ifdef FEATURE_LUA
-	if (G_LuaHook_Obituary(self->s.number, killer, meansOfDeath))
+	if (G_LuaHook_Obituary(self->s.number, killer, meansOfDeath, self->client->bombasLethalHeadshot))
 	{
 		if (self->s.number < 0 || self->s.number >= MAX_CLIENTS)
 		{
@@ -1990,6 +1990,11 @@ void G_DamageExt(gentity_t *targ, gentity_t *inflictor, gentity_t *attacker, vec
 
 				targ->enemy     = attacker;
 				targ->deathType = mod;
+
+				if (targ->client)
+				{
+					targ->client->bombasLethalHeadshot = hitEventType == HIT_HEADSHOT;
+				}
 
 				if (targ->die)
 				{

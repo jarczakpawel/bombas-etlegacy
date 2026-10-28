@@ -653,7 +653,8 @@ typedef struct
 	float startxptotal;
 	int skill[SK_NUM_SKILLS];                           ///< skill
 	int rank;                                           ///< rank
-	int medals[SK_NUM_SKILLS];                          ///< medals
+	int medals[SK_NUM_SKILLS];
+	qboolean bombasLethalHeadshot;                          ///< medals
 
 	int referee;
 	int shoutcaster;

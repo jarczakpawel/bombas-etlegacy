@@ -4165,7 +4165,7 @@ void G_LuaHook_Print(printMessageType_t category, char *text)
  * @lua_def ---@param attacker number the killer.
  * @lua_def ---@param meansOfDeath number the means of death (see `et.MOD_`).
  */
-qboolean G_LuaHook_Obituary(int victim, int killer, int meansOfDeath)
+qboolean G_LuaHook_Obituary(int victim, int killer, int meansOfDeath, qboolean lethalHeadshot)
 {
 	int      i;
 	lua_vm_t *vm;
@@ -4187,9 +4187,10 @@ qboolean G_LuaHook_Obituary(int victim, int killer, int meansOfDeath)
 			lua_pushinteger(vm->L, victim);
 			lua_pushinteger(vm->L, killer);
 			lua_pushinteger(vm->L, meansOfDeath);
+			lua_pushboolean(vm->L, lethalHeadshot);
 
 			// Call
-			if (!G_LuaCall(vm, "et_Obituary", 3, 1))
+			if (!G_LuaCall(vm, "et_Obituary", 4, 1))
 			{
 				//G_LuaStopVM(vm);
 				continue;
