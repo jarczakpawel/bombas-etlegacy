@@ -78,6 +78,31 @@ static qboolean G_BombasMolotovProjectile(const gentity_t *ent)
     return ent->classname && !Q_stricmp(ent->classname, "bombas_molotov");
 }
 
+static void G_BombasMolotovVisualThink(gentity_t *visual)
+{
+    if (level.time >= visual->timestamp ||
+        (trap_PointContents(visual->r.currentOrigin, visual->s.number) & CONTENTS_WATER))
+    {
+        G_FreeEntity(visual);
+        return;
+    }
+
+    if (level.match_pause != PAUSE_NONE)
+    {
+        visual->timestamp += level.frameTime;
+    }
+    else if (visual->s.eType == ET_INVISIBLE && level.time >= visual->wait)
+    {
+        visual->s.eType = ET_GENERAL;
+    }
+    if (visual->timestamp - level.time <= 1300 && !visual->count)
+    {
+        visual->s.modelindex = G_ModelIndex("models/bombas/molotov/fire_embers.md3");
+        visual->count = 1;
+    }
+    visual->nextthink = level.time + 150;
+}
+
 static void G_BombasMolotovFireThink(gentity_t *fire)
 {
     gentity_t *owner;
@@ -109,20 +134,14 @@ static void G_BombasMolotovFireThink(gentity_t *fire)
         return;
     }
 
-    /* One contiguous fuel pool, 64 geometry frames. The client interpolates
-     * consecutive MD3 frames, so flames smoothly sink throughout the last
-     * ~6 seconds rather than abruptly switching to three or four models. */
+    if (fire->timestamp - level.time <= 1300 && !fire->count)
     {
-        int remaining = fire->timestamp - level.time;
-        int elapsed = BOMBAS_MOLOTOV_LIFETIME - remaining;
-        int brightness;
-        if (elapsed < 0) elapsed = 0;
-        if (elapsed > BOMBAS_MOLOTOV_LIFETIME) elapsed = BOMBAS_MOLOTOV_LIFETIME;
-        fire->s.frame = (elapsed * 63) / BOMBAS_MOLOTOV_LIFETIME;
-        brightness = 12 + (25 * remaining) / BOMBAS_MOLOTOV_LIFETIME;
-        fire->s.constantLight = (28 << 24) | (24 << 16) |
-                                (brightness * 4 << 8) | (brightness * 6);
+        fire->s.modelindex = G_ModelIndex("models/bombas/molotov/fire_embers.md3");
+        fire->count = 1;
     }
+
+    fire->s.constantLight = ((25 + ((level.time / 110 + fire->s.number * 3) % 13)) << 24) |
+                            (24 << 16) | (116 << 8) | 255;
     G_FlameDamage(fire, NULL);
     fire->nextthink = level.time + FRAMETIME;
 }
@@ -133,6 +152,7 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position, cons
     gentity_t *fire;
     vec3_t start, end;
     trace_t ground;
+    int i;
 
     if (missile->r.ownerNum < 0 || missile->r.ownerNum >= level.maxclients)
     {
@@ -194,8 +214,68 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position, cons
     G_SetOrigin(fire, start);
     trap_LinkEntity(fire);
     G_Sound(fire, G_SoundIndex("sound/world/glassbreak1.wav"));
-    /* R40: all flames, dark smoke, embers and one solvent puddle live in
-     * the single 64-frame fire_patch.md3. No separate pools or spark entities. */
+
+    {
+        int activeVisuals = 0;
+        for (i = level.maxclients; i < level.num_entities; ++i)
+        {
+            if (g_entities[i].inuse && g_entities[i].classname &&
+                !Q_stricmp(g_entities[i].classname, "bombas_molotov_visual"))
+            {
+                ++activeVisuals;
+            }
+        }
+        if (activeVisuals >= 72)
+        {
+            G_FreeEntity(missile);
+            return;
+        }
+    }
+
+    for (i = 0; i < 6; ++i)
+    {
+        gentity_t *visual;
+        vec3_t point, floorEnd, losStart, losEnd, angles;
+        trace_t patch, los;
+        float angle = (float)i * (2.f * (float)M_PI / 6.f) + (float)(missile->s.number % 5) * .29f;
+        float radius = (i % 2) ? 82.f : 54.f;
+
+        VectorSet(point, start[0] + cosf(angle) * radius, start[1] + sinf(angle) * radius, start[2] + 46.f);
+        VectorCopy(point, floorEnd);
+        floorEnd[2] -= 104.f;
+        trap_Trace(&patch, point, NULL, NULL, floorEnd, missile->s.number, MASK_SOLID);
+        if (patch.fraction >= 1.f || patch.startsolid || patch.plane.normal[2] < .65f)
+        {
+            continue;
+        }
+
+        VectorCopy(start, losStart);
+        VectorCopy(patch.endpos, losEnd);
+        losStart[2] += 18.f;
+        losEnd[2] += 18.f;
+        trap_Trace(&los, losStart, NULL, NULL, losEnd, missile->s.number, MASK_SOLID);
+        if (los.startsolid || los.fraction < .98f)
+        {
+            continue;
+        }
+
+        visual = G_Spawn();
+        visual->classname = "bombas_molotov_visual";
+        visual->s.eType = i < 2 ? ET_GENERAL : ET_INVISIBLE;
+        visual->wait = (float)(level.time + i * 180);
+        visual->s.modelindex = G_ModelIndex("models/bombas/molotov/fire_lick_patch.md3");
+        visual->r.svFlags |= SVF_BROADCAST;
+        visual->s.pos.trType = TR_STATIONARY;
+        visual->timestamp = fire->timestamp;
+        visual->think = G_BombasMolotovVisualThink;
+        visual->nextthink = level.time + 150;
+        patch.endpos[2] += 1.5f;
+        G_SetOrigin(visual, patch.endpos);
+        VectorSet(angles, 0.f, angle * 180.f / (float)M_PI, 0.f);
+        G_SetAngle(visual, angles);
+        trap_LinkEntity(visual);
+    }
+
     G_FreeEntity(missile);
 }
 
