@@ -3305,8 +3305,12 @@ void ClientSpawn(gentity_t *ent, qboolean revived, qboolean teamChange, qboolean
 		client->sess.latchPlayerType = wanted;
 		if (g_bombasMode.integer == 1)
 		{
-			client->sess.playerWeapon = WP_PANZERFAUST;
-			client->sess.latchPlayerWeapon = WP_PANZERFAUST;
+			// ET: Legacy has separate team rockets. Omni-Bot selects WP_BAZOOKA
+			// for Allies; giving those bots WP_PANZERFAUST leaves them unable
+			// to fire the requested weapon.
+			weapon_t panzerWeapon = client->sess.sessionTeam == TEAM_ALLIES ? WP_BAZOOKA : WP_PANZERFAUST;
+			client->sess.playerWeapon = panzerWeapon;
+			client->sess.latchPlayerWeapon = panzerWeapon;
 		}
 		else if (g_bombasMode.integer == 3)
 		{
@@ -3393,16 +3397,17 @@ void ClientSpawn(gentity_t *ent, qboolean revived, qboolean teamChange, qboolean
 	if (!revived && g_bombasMode.integer == 1 &&
 	    (client->sess.sessionTeam == TEAM_AXIS || client->sess.sessionTeam == TEAM_ALLIES))
 	{
+		weapon_t panzerWeapon = client->sess.sessionTeam == TEAM_ALLIES ? WP_BAZOOKA : WP_PANZERFAUST;
 		Com_Memset(client->ps.weapons, 0, sizeof(client->ps.weapons));
 		Com_Memset(client->ps.ammo, 0, sizeof(client->ps.ammo));
 		Com_Memset(client->ps.ammoclip, 0, sizeof(client->ps.ammoclip));
-		COM_BitSet(client->ps.weapons, WP_PANZERFAUST);
-		client->ps.weapon = WP_PANZERFAUST;
-		client->ps.ammoclip[GetWeaponTableData(WP_PANZERFAUST)->clipIndex] = 1;
-		client->ps.ammo[GetWeaponTableData(WP_PANZERFAUST)->ammoIndex] = 999;
+		COM_BitSet(client->ps.weapons, panzerWeapon);
+		client->ps.weapon = panzerWeapon;
+		client->ps.ammoclip[GetWeaponTableData(panzerWeapon)->clipIndex] = 1;
+		client->ps.ammo[GetWeaponTableData(panzerWeapon)->ammoIndex] = 999;
 #ifdef FEATURE_OMNIBOT
 		Bot_Event_ResetWeapons(client->ps.clientNum);
-		Bot_Event_AddWeapon(client->ps.clientNum, Bot_WeaponGameToBot(WP_PANZERFAUST));
+		Bot_Event_AddWeapon(client->ps.clientNum, Bot_WeaponGameToBot(panzerWeapon));
 #endif
 	}
 

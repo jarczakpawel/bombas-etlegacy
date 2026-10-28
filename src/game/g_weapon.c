@@ -3909,7 +3909,8 @@ gentity_t *weapon_antitank_fire(gentity_t *ent)
 	rocket = fire_missile(ent, muzzleEffect, dir, ent->s.weapon);
 	if (g_bombasMode.integer == 1 && ent->client)
 	{
-		ent->client->ps.ammo[GetWeaponTableData(WP_PANZERFAUST)->ammoIndex] = 999;
+		// Both Axis Panzerfaust and Allied Bazooka need the same ammo refill.
+		ent->client->ps.ammo[GetWeaponTableData(ent->s.weapon)->ammoIndex] = 999;
 	}
 
 
