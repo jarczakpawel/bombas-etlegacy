@@ -2593,6 +2593,21 @@ char *ClientConnect(int clientNum, qboolean firstTime, qboolean isBot)
 	}
 #endif
 
+	if (isBot && g_xpSave.integer && g_gametype.integer == GT_WOLF_MAPVOTE)
+	{
+		client->sess.startxptotal = 0;
+		for (i = 0; i < SK_NUM_SKILLS; i++)
+		{
+			client->sess.skillpoints[i] = 140;
+			client->sess.startskillpoints[i] = 140;
+			client->sess.medals[i] = 0;
+		}
+		client->sess.skillpoints[SK_HEAVY_WEAPONS] = 160;
+		client->sess.startskillpoints[SK_HEAVY_WEAPONS] = 160;
+		client->sess.startxptotal = 1000;
+		G_CalcRank(client);
+	}
+
 	ClientUserinfoChanged(clientNum);
 
 	// don't do the "xxx connected" messages if they were caried over from previous level

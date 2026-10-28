@@ -463,7 +463,7 @@ static qboolean G_TrySyringeHeal(gentity_t *healer, gentity_t *target, qboolean 
 	}
 
 	maxHealth = target->client->ps.stats[STAT_MAX_HEALTH];
-	if (maxHealth <= 0 || target->health >= maxHealth)
+	if (maxHealth <= 0 || target->health * 2 >= maxHealth)
 	{
 		*refundAmmo = qtrue;
 		return qtrue;

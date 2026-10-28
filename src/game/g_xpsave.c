@@ -167,6 +167,11 @@ void G_XPSave_Load(gclient_t *cl)
 		return;
 	}
 
+	if (g_entities[cl - level.clients].r.svFlags & SVF_BOT)
+	{
+		return;
+	}
+
 	// skip clients without a usable GUID (e.g. ETLTV slaves)
 	// pers.cl_guid is set at connect time (format-validated when g_guidCheck is enabled); userinfo may be stale on slot reuse
 	if (strlen(cl->pers.cl_guid) < MAX_GUID_LENGTH)
@@ -230,6 +235,11 @@ void G_XPSave_Store(gclient_t *cl)
 	}
 
 	clientNum = cl - level.clients;
+
+	if (g_entities[cl - level.clients].r.svFlags & SVF_BOT)
+	{
+		return;
+	}
 
 	// skip clients without a usable GUID (e.g. ETLTV slaves)
 	// pers.cl_guid is set at connect time (format-validated when g_guidCheck is enabled); userinfo may be stale on slot reuse

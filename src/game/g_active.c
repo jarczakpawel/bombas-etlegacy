@@ -1464,10 +1464,6 @@ void ClientThink_real(gentity_t *ent)
 	pm.gametype           = g_gametype.integer;
 	pm.ltChargeTime       = level.fieldopsChargeTime[client->sess.sessionTeam - 1];
 	pm.soldierChargeTime  = level.soldierChargeTime[client->sess.sessionTeam - 1];
-	if (g_bombasMode.integer == 1 && (ent->r.svFlags & SVF_BOT))
-	{
-		pm.soldierChargeTime = 1200;
-	}
 	pm.engineerChargeTime = level.engineerChargeTime[client->sess.sessionTeam - 1];
 	pm.medicChargeTime    = level.medicChargeTime[client->sess.sessionTeam - 1];
 
