@@ -2567,13 +2567,16 @@ static qboolean G_BombasIsSpecialVoteMap(const char *filename)
     return Q_stristr(modeNames, needle) != NULL;
 }
 
-static void G_BombasOrderVoteModes(int count)
+static void G_BombasOrderVoteModes(void)
 {
     int normal[MAX_VOTE_MAPS], special[MAX_VOTE_MAPS];
-    int nNormal = 0, nSpecial = 0, visible, takeSpecial, takeNormal;
-    int i, k, n;
+    int nNormal = 0, nSpecial = 0;
+    int visible = MIN(level.mapVoteNumMaps, g_maxMapsVotedFor.integer);
+    int i, k = 0;
 
-    for (i = 0; i < count; ++i)
+    // The first visible entries have ALREADY been chosen at random from
+    // the candidate pool. Only their display order may change here.
+    for (i = 0; i < visible; ++i)
     {
         int id = level.sortedMaps[i];
         if (id < 0) { continue; }
@@ -2581,19 +2584,8 @@ static void G_BombasOrderVoteModes(int count)
         { special[nSpecial++] = id; }
         else { normal[nNormal++] = id; }
     }
-    visible = MIN(level.mapVoteNumMaps, g_maxMapsVotedFor.integer);
-    // Offer every configured special map in the *bottom* part, including
-    // Sniper, rather than randomly offering only the first few Panzer maps.
-    takeSpecial = MIN(nSpecial, visible / 2);
-    takeNormal = MIN(nNormal, visible - takeSpecial);
-    if (takeNormal < visible - takeSpecial)
-    { takeSpecial = MIN(nSpecial, visible - takeNormal); }
-
-    k = 0;
-    for (n = 0; n < takeNormal; ++n) { level.sortedMaps[k++] = normal[n]; }
-    for (n = 0; n < takeSpecial; ++n) { level.sortedMaps[k++] = special[n]; }
-    for (n = takeNormal; n < nNormal; ++n) { level.sortedMaps[k++] = normal[n]; }
-    for (n = takeSpecial; n < nSpecial; ++n) { level.sortedMaps[k++] = special[n]; }
+    for (i = 0; i < nNormal; ++i) { level.sortedMaps[k++] = normal[i]; }
+    for (i = 0; i < nSpecial; ++i) { level.sortedMaps[k++] = special[i]; }
 }
 
 /**
@@ -2704,36 +2696,7 @@ void BeginIntermission(void)
 			}
 		}
 
-		// Important: with 85 installed maps the first 32 shuffled entries
-		// might contain only Panzer, omitting ALL Sniper maps. Put the
-		// configured specials inside the 32-candidate pool BEFORE clipping.
-		// Their actual display order is still normal first, special last.
-		{
-			char ordered[sizeof(bspNames)];
-			char *write = ordered;
-			int pass;
-			for (pass = 0; pass < 2; ++pass)
-			{
-				char *read = bspNames;
-				for (i = 0; i < level.mapVoteNumMaps; ++i)
-				{
-					size_t size = strlen(read) + 1;
-					qboolean special = G_BombasIsSpecialVoteMap(read);
-					if ((pass == 0 && special) || (pass == 1 && !special))
-					{
-						if ((size_t)(write - ordered) + size > sizeof(ordered)) { break; }
-						memcpy(write, read, size);
-						write += size;
-					}
-					read += size;
-				}
-			}
-			if (write > ordered)
-			{
-				Com_Memset(bspNames, 0, sizeof(bspNames));
-				memcpy(bspNames, ordered, write - ordered);
-			}
-		}
+		// Keep the unbiased shuffle: do NOT move special maps ahead of the 32-map cap.
 
 		if (level.mapVoteNumMaps > MAX_VOTE_MAPS)
 		{
@@ -2797,7 +2760,7 @@ void BeginIntermission(void)
 		}
 
 		qsort(level.sortedMaps, len, sizeof(level.sortedMaps[0]), G_SortMapsByzOrder);
-		G_BombasOrderVoteModes(len);
+		G_BombasOrderVoteModes();
 
 		maxMaps = g_maxMapsVotedFor.integer;
 		if (maxMaps > level.mapVoteNumMaps)
