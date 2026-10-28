@@ -2531,6 +2531,68 @@ int QDECL G_SortMapsByzOrder(const void *a, const void *b)
 }
 
 /**
+ * @brief Prioritize normal maps on the end-of-round vote list, leaving a small
+ *        selection of maps with configured special modes at the bottom.
+ *        The names are generated from the same map_modes data as the panel.
+ */
+static void G_BombasOrderVoteModes(int count)
+{
+    static char modeNames[2048];
+    static qboolean modeNamesRead = qfalse;
+    int normal[MAX_VOTE_MAPS], special[MAX_VOTE_MAPS];
+    int nNormal = 0, nSpecial = 0, visible, specialSlots, takeSpecial, takeNormal;
+    int i, k, n;
+
+    if (!modeNamesRead)
+    {
+        fileHandle_t file;
+        int len;
+        modeNamesRead = qtrue;
+        len = trap_FS_FOpenFile("scripts/bombas_vote_modes.txt", &file, FS_READ);
+        if (len > 0)
+        {
+            if (len < sizeof(modeNames))
+            {
+                trap_FS_Read(modeNames, len, file);
+                modeNames[len] = '\0';
+            }
+            trap_FS_FCloseFile(file);
+        }
+    }
+
+    if (!modeNames[0])
+    {
+        return;
+    }
+    for (i = 0; i < count; ++i)
+    {
+        int id = level.sortedMaps[i];
+        if (id < 0)
+        {
+            continue;
+        }
+        if (Q_stristr(modeNames, va(":%s:", level.mapvoteinfo[id].bspName)))
+        {
+            special[nSpecial++] = id;
+        }
+        else
+        {
+            normal[nNormal++] = id;
+        }
+    }
+    visible = MIN(level.mapVoteNumMaps, g_maxMapsVotedFor.integer);
+    specialSlots = MIN(nSpecial, visible / 4);
+    takeNormal = MIN(nNormal, visible - specialSlots);
+    takeSpecial = MIN(nSpecial, visible - takeNormal);
+
+    k = 0;
+    for (n = 0; n < takeNormal; ++n) { level.sortedMaps[k++] = normal[n]; }
+    for (n = 0; n < takeSpecial; ++n) { level.sortedMaps[k++] = special[n]; }
+    for (n = takeNormal; n < nNormal; ++n) { level.sortedMaps[k++] = normal[n]; }
+    for (n = takeSpecial; n < nSpecial; ++n) { level.sortedMaps[k++] = special[n]; }
+}
+
+/**
  * @brief BeginIntermission
  */
 void BeginIntermission(void)
@@ -2700,6 +2762,7 @@ void BeginIntermission(void)
 		}
 
 		qsort(level.sortedMaps, len, sizeof(level.sortedMaps[0]), G_SortMapsByzOrder);
+		G_BombasOrderVoteModes(len);
 
 		maxMaps = g_maxMapsVotedFor.integer;
 		if (maxMaps > level.mapVoteNumMaps)
