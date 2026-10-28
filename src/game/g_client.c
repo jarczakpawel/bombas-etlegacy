@@ -3189,6 +3189,10 @@ void ClientSpawn(gentity_t *ent, qboolean revived, qboolean teamChange, qboolean
 	client->ps.persistant[PERS_TEAM]        = client->sess.sessionTeam;
 	client->ps.persistant[PERS_HWEAPON_USE] = 0;
 
+	// A full respawn or revival clears poison and bot-only Panzer cooldown.
+	client->bombasPoisonUntil = 0;
+	client->bombasPoisonNextTick = 0;
+	client->bombasPanzerReadyTime = 0;
 	// Update per-life revive compatibility counters once spawn type is known.
 	G_LegacyRevive_OnClientSpawn(ent, revived);
 

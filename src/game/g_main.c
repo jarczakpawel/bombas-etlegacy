@@ -4740,12 +4740,71 @@ void G_RunFrame(int levelTime)
 		G_RunEntity(&g_entities[i], level.frameTime);
 	}
 
+	// Bombas: Omni-Bot occasionally leaves a bot on CON_CONNECTING after
+	// map restart, reserving a team slot indefinitely. Drop only stale bots;
+	// Omni-Bot's existing maxbots manager will refill the empty spot.
+	if (level.framenum % 20 == 0)
+	{
+		for (i = 0; i < level.maxclients; ++i)
+		{
+			gentity_t *bot = &g_entities[i];
+			if ((bot->r.svFlags & SVF_BOT) && bot->client &&
+			    bot->client->pers.connected == CON_CONNECTING &&
+			    level.time - bot->client->pers.connectTime > 12000)
+			{
+				G_Printf("Bombas: dropping stalled Omni-Bot client %d after %d ms\n",
+				         i, level.time - bot->client->pers.connectTime);
+				trap_DropClient(i, "Omni-Bot connection timeout", 0);
+			}
+		}
+	}
+
 	for (i = 0; i < level.numConnectedClients; i++)
 	{
 		ClientEndFrame(&g_entities[level.sortedClients[i]]);
 	}
 
 	CheckWolfMP();
+
+	// ETPub-style poison needle: per-second damage, finite, curable.
+	// Use existing MOD_SYRINGE for damage attribution: no new client enums.
+	if (g_poison.integer > 0 && level.match_pause == PAUSE_NONE)
+	{
+		for (i = 0; i < level.maxclients; ++i)
+		{
+			gentity_t *victim = &g_entities[i];
+			gclient_t *vc = victim->client;
+			if (!vc || vc->pers.connected != CON_CONNECTED ||
+			    !vc->bombasPoisonUntil || victim->health <= 0)
+			{
+				continue;
+			}
+			if (level.time >= vc->bombasPoisonUntil)
+			{
+				vc->bombasPoisonUntil = 0;
+				continue;
+			}
+			if (level.time >= vc->bombasPoisonNextTick)
+			{
+				gentity_t *attacker = NULL;
+				int id = vc->bombasPoisonAttacker;
+				if (id >= 0 && id < level.maxclients &&
+				    g_entities[id].client &&
+				    g_entities[id].client->pers.connected == CON_CONNECTED &&
+				    g_entities[id].client->pers.enterTime == vc->bombasPoisonAttackerEnterTime)
+				{
+					attacker = &g_entities[id];
+				}
+				vc->bombasPoisonNextTick += 1000;
+				if (vc->bombasPoisonNextTick < level.time)
+				{
+					vc->bombasPoisonNextTick = level.time + 1000;
+				}
+				G_Damage(victim, attacker, attacker, NULL, NULL,
+				         MIN(g_poison.integer, 20), 0, MOD_SYRINGE);
+			}
+		}
+	}
 
 	// see if it is time to end the level
 	CheckExitRules();

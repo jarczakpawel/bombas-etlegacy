@@ -2580,6 +2580,26 @@ public:
 				cmd.upmove = (signed char)-fMaxSpeed;
 			}
 		}
+		// Bombas PanzerWar bot nerf: only bots, only rockets, never humans.
+		// Prevent firing until stock recharge + 2000 ms have elapsed.
+		if (g_bombasMode.integer == 1 &&
+		    (cmd.weapon == WP_PANZERFAUST || cmd.weapon == WP_BAZOOKA))
+		{
+			if (level.time < bot->client->bombasPanzerReadyTime)
+			{
+				cmd.buttons &= ~BUTTON_ATTACK;
+			}
+			else if (cmd.buttons & BUTTON_ATTACK)
+			{
+				vec3_t missedAim;
+				VectorCopy(bot->client->ps.viewangles, missedAim);
+				// Slow deterministic errors: up to 16 deg yaw and up to 7.5 deg pitch.
+				// Unlike gun spread, a miss really moves the whole rocket trajectory.
+				missedAim[YAW] += 16.0f * sinf(level.time * 0.0011f + _client * 1.37f);
+				missedAim[PITCH] += 7.5f * cosf(level.time * 0.0013f + _client * 0.91f);
+				SetClientViewAngle(bot, missedAim);
+			}
+		}
 		trap_BotUserCommand(_client, &cmd);
 	}
 

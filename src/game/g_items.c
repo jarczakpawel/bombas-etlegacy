@@ -638,6 +638,9 @@ int Pickup_Health(gentity_t *ent, gentity_t *other)
 		other->health = other->client->ps.stats[STAT_MAX_HEALTH];
 	}
 	other->client->ps.stats[STAT_HEALTH] = other->health;
+	// ETPub-style antidote: a health pack removes poison, including cabinet
+	// packs. Do not disturb regular healing or ammo behavior.
+	other->client->bombasPoisonUntil = 0;
 
 #ifdef FEATURE_OMNIBOT
 	// omni-bot event

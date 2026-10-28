@@ -462,6 +462,15 @@ static qboolean G_TrySyringeHeal(gentity_t *healer, gentity_t *target, qboolean 
 		return qtrue;
 	}
 
+	// A friendly medic syringe can antidote a teammate, even above half HP.
+	if (target->client->bombasPoisonUntil > level.time)
+	{
+		target->client->bombasPoisonUntil = 0;
+		G_Sound(target, GAMESOUND_MISC_REVIVE);
+		trap_SendServerCommand(target - g_entities, "cp \"^2Poison cured!^7\"");
+		return qtrue;
+	}
+
 	maxHealth = target->client->ps.stats[STAT_MAX_HEALTH];
 	if (maxHealth <= 0 || target->health * 2 >= maxHealth)
 	{
@@ -497,8 +506,12 @@ gentity_t *Weapon_Syringe(gentity_t *ent)
 	CalcMuzzlePointForActivate(ent, forward, right, up, muzzleTrace);
 	VectorMA(muzzleTrace, CH_REVIVE_DIST, forward, end);
 
-	// right on top of intended revivee.
-	G_TempTraceIgnorePlayersFromTeam(ent->s.teamNum == TEAM_AXIS ? TEAM_ALLIES : TEAM_AXIS);
+	// Normal revives ignore opponents. With poison enabled, allow the
+	// same physical needle to stab a living enemy instead of piercing them.
+	if (g_poison.integer <= 0)
+	{
+		G_TempTraceIgnorePlayersFromTeam(ent->s.teamNum == TEAM_AXIS ? TEAM_ALLIES : TEAM_AXIS);
+	}
 	G_TempTraceIgnoreBodies();
 
 	// Re-trace if we hit blocking deployables, otherwise either pass (hit a
@@ -546,6 +559,34 @@ gentity_t *Weapon_Syringe(gentity_t *ent)
 	{
 		// give back ammo
 		ent->client->ps.ammoclip[GetWeaponTableData(WP_MEDIC_SYRINGE)->clipIndex] += 1;
+		return NULL;
+	}
+
+	// Bombas poison syringe (ETPub mechanic): enemy only, living target,
+	// same melee range and one needle consumed. Poison doesn't stack without
+	// bound; a subsequent hit refreshes the duration and attacker attribution.
+	if (g_poison.integer > 0 && traceEnt->health > 0 &&
+	    traceEnt->client->ps.pm_type == PM_NORMAL &&
+	    traceEnt->client->sess.sessionTeam != ent->client->sess.sessionTeam &&
+	    (traceEnt->client->sess.sessionTeam == TEAM_AXIS ||
+	     traceEnt->client->sess.sessionTeam == TEAM_ALLIES))
+	{
+		int voice = G_SoundIndex(ent->client->sess.sessionTeam == TEAM_AXIS ?
+		    "sound/bombas/poison/v21_short_axis.wav" :
+		    "sound/bombas/poison/v21_short_allies.wav");
+		traceEnt->client->bombasPoisonUntil = level.time + 30000;
+		traceEnt->client->bombasPoisonNextTick = level.time + 1000;
+		traceEnt->client->bombasPoisonAttacker = ent->s.number;
+		traceEnt->client->bombasPoisonAttackerEnterTime = ent->client->pers.enterTime;
+		G_ClientSound(ent, voice);
+		G_ClientSound(traceEnt, voice);
+		trap_SendServerCommand(ent - g_entities, "cp \"^2Enemy poisoned!^7\"");
+		trap_SendServerCommand(traceEnt - g_entities, "cp \"^1Poisoned! Find a health pack!^7\"");
+		G_LogPrintf("Bombas_Poison: %d %d\n", ent->s.number, traceEnt->s.number);
+		if (g_gamestate.integer == GS_PLAYING)
+		{
+			ent->client->sess.aWeaponStats[WS_SYRINGE].hits++;
+		}
 		return NULL;
 	}
 
@@ -3909,6 +3950,13 @@ gentity_t *weapon_antitank_fire(gentity_t *ent)
 	rocket = fire_missile(ent, muzzleEffect, dir, ent->s.weapon);
 	if (g_bombasMode.integer == 1 && ent->client)
 	{
+		// On PanzerWar maps only, Omni-Bots wait 2 seconds longer than
+		// a human after each shot; independent of stock charge animation.
+		if (ent->r.svFlags & SVF_BOT)
+		{
+			ent->client->bombasPanzerReadyTime = level.time +
+			    g_soldierChargeTime.integer + 2000;
+		}
 		// Both Axis Panzerfaust and Allied Bazooka need the same ammo refill.
 		ent->client->ps.ammo[GetWeaponTableData(ent->s.weapon)->ammoIndex] = 999;
 	}

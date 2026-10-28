@@ -1475,6 +1475,29 @@ qboolean SetTeam(gentity_t *ent, const char *s, qboolean force, weapon_t w1, wea
 
 			counts[TEAM_ALLIES] = TeamCount(ent - g_entities, TEAM_ALLIES);
 			counts[TEAM_AXIS]   = TeamCount(ent - g_entities, TEAM_AXIS);
+			// Bombas: don't let bots (including CON_CONNECTING ghosts) block
+			// humans from selecting Axis or Allies. Keep human-only balance.
+			if (!(ent->r.svFlags & SVF_BOT))
+			{
+				int i;
+				counts[TEAM_ALLIES] = 0;
+				counts[TEAM_AXIS]   = 0;
+				for (i = 0; i < level.maxclients; ++i)
+				{
+					gentity_t *player = &g_entities[i];
+					if (i == clientNum || !player->client ||
+					    player->client->pers.connected != CON_CONNECTED ||
+					    (player->r.svFlags & SVF_BOT))
+					{
+						continue;
+					}
+					if (player->client->sess.sessionTeam == TEAM_AXIS ||
+					    player->client->sess.sessionTeam == TEAM_ALLIES)
+					{
+						counts[player->client->sess.sessionTeam]++;
+					}
+				}
+			}
 
 			// We allow a spread of one
 			if (team == TEAM_AXIS && counts[TEAM_AXIS] - counts[TEAM_ALLIES] >= 1)

@@ -956,6 +956,12 @@ struct gclient_s
 	clientPersistant_t pers;
 	clientSession_t sess;
 	qboolean bombasLethalHeadshot;
+	// Server-only Bombas features: no client protocol struct changes.
+	int bombasPanzerReadyTime;
+	int bombasPoisonUntil;
+	int bombasPoisonNextTick;
+	int bombasPoisonAttacker;
+	int bombasPoisonAttackerEnterTime;
 
 	qboolean noclip;
 

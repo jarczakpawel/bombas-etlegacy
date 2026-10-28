@@ -61,6 +61,7 @@ vmCvar_t g_dedicated;
 vmCvar_t g_speed;
 vmCvar_t g_gravity;
 vmCvar_t g_bombasMode;
+vmCvar_t g_poison;
 vmCvar_t g_goomba;
 vmCvar_t g_bombasAdrenaline;
 vmCvar_t g_cheats;
@@ -442,6 +443,7 @@ cvarTable_t gameCvarTable[] =
 	{ &g_speed,                           "g_speed",                           "320",                        0,                                               0, qtrue,  qtrue  },
 	{ &g_gravity,                         "g_gravity",                         "800",                        0,                                               0, qtrue,  qtrue  },
 	{ &g_bombasMode,                      "g_bombasMode",                      "0",                          CVAR_SERVERINFO,                                 0, qtrue,  qfalse },
+	{ &g_poison,                          "g_poison",                          "0",                          CVAR_SERVERINFO,                                 0, qfalse, qfalse },
 	{ &g_goomba,                          "g_goomba",                          "4",                          CVAR_ARCHIVE,                                    0, qtrue,  qfalse },
 	{ &g_bombasAdrenaline,                "g_bombasAdrenaline",                "1",                          CVAR_ARCHIVE,                                    0, qtrue,  qfalse },
 	{ &g_knockback,                       "g_knockback",                       "1000",                       0,                                               0, qtrue,  qtrue  },
