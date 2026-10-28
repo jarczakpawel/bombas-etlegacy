@@ -2535,19 +2535,19 @@ int QDECL G_SortMapsByzOrder(const void *a, const void *b)
  *        selection of maps with configured special modes at the bottom.
  *        The names are generated from the same map_modes data as the panel.
  */
-static void G_BombasOrderVoteModes(int count)
+static qboolean G_BombasIsSpecialVoteMap(const char *filename)
 {
     static char modeNames[2048];
-    static qboolean modeNamesRead = qfalse;
-    int normal[MAX_VOTE_MAPS], special[MAX_VOTE_MAPS];
-    int nNormal = 0, nSpecial = 0, visible, specialSlots, takeSpecial, takeNormal;
-    int i, k, n;
+    static qboolean initialized = qfalse;
+    char mapName[128];
+    char needle[132];
+    char *suffix;
 
-    if (!modeNamesRead)
+    if (!initialized)
     {
         fileHandle_t file;
         int len;
-        modeNamesRead = qtrue;
+        initialized = qtrue;
         len = trap_FS_FOpenFile("scripts/bombas_vote_modes.txt", &file, FS_READ);
         if (len > 0)
         {
@@ -2559,31 +2559,35 @@ static void G_BombasOrderVoteModes(int count)
             trap_FS_FCloseFile(file);
         }
     }
+    if (!modeNames[0]) { return qfalse; }
+    Q_strncpyz(mapName, filename, sizeof(mapName));
+    suffix = strstr(mapName, ".bsp");
+    if (suffix && !Q_stricmp(suffix, ".bsp")) { *suffix = '\0'; }
+    Com_sprintf(needle, sizeof(needle), ":%s:", mapName);
+    return Q_stristr(modeNames, needle) != NULL;
+}
 
-    if (!modeNames[0])
-    {
-        return;
-    }
+static void G_BombasOrderVoteModes(int count)
+{
+    int normal[MAX_VOTE_MAPS], special[MAX_VOTE_MAPS];
+    int nNormal = 0, nSpecial = 0, visible, takeSpecial, takeNormal;
+    int i, k, n;
+
     for (i = 0; i < count; ++i)
     {
         int id = level.sortedMaps[i];
-        if (id < 0)
-        {
-            continue;
-        }
-        if (Q_stristr(modeNames, va(":%s:", level.mapvoteinfo[id].bspName)))
-        {
-            special[nSpecial++] = id;
-        }
-        else
-        {
-            normal[nNormal++] = id;
-        }
+        if (id < 0) { continue; }
+        if (G_BombasIsSpecialVoteMap(level.mapvoteinfo[id].bspName))
+        { special[nSpecial++] = id; }
+        else { normal[nNormal++] = id; }
     }
     visible = MIN(level.mapVoteNumMaps, g_maxMapsVotedFor.integer);
-    specialSlots = MIN(nSpecial, visible / 4);
-    takeNormal = MIN(nNormal, visible - specialSlots);
-    takeSpecial = MIN(nSpecial, visible - takeNormal);
+    // Offer every configured special map in the *bottom* part, including
+    // Sniper, rather than randomly offering only the first few Panzer maps.
+    takeSpecial = MIN(nSpecial, visible / 2);
+    takeNormal = MIN(nNormal, visible - takeSpecial);
+    if (takeNormal < visible - takeSpecial)
+    { takeSpecial = MIN(nSpecial, visible - takeNormal); }
 
     k = 0;
     for (n = 0; n < takeNormal; ++n) { level.sortedMaps[k++] = normal[n]; }
@@ -2697,6 +2701,37 @@ void BeginIntermission(void)
 				shuffled[r] = qtrue;
 				Q_strncpyz(bspptrTmp, shuffledNames[r], strlen(shuffledNames[r]) + 1);
 				bspptrTmp += strlen(shuffledNames[r]) + 1;
+			}
+		}
+
+		// Important: with 85 installed maps the first 32 shuffled entries
+		// might contain only Panzer, omitting ALL Sniper maps. Put the
+		// configured specials inside the 32-candidate pool BEFORE clipping.
+		// Their actual display order is still normal first, special last.
+		{
+			char ordered[sizeof(bspNames)];
+			char *write = ordered;
+			int pass;
+			for (pass = 0; pass < 2; ++pass)
+			{
+				char *read = bspNames;
+				for (i = 0; i < level.mapVoteNumMaps; ++i)
+				{
+					size_t size = strlen(read) + 1;
+					qboolean special = G_BombasIsSpecialVoteMap(read);
+					if ((pass == 0 && special) || (pass == 1 && !special))
+					{
+						if ((size_t)(write - ordered) + size > sizeof(ordered)) { break; }
+						memcpy(write, read, size);
+						write += size;
+					}
+					read += size;
+				}
+			}
+			if (write > ordered)
+			{
+				Com_Memset(bspNames, 0, sizeof(bspNames));
+				memcpy(bspNames, ordered, write - ordered);
 			}
 		}
 
