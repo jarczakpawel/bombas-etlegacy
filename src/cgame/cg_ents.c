@@ -363,12 +363,72 @@ static void CG_AddEntToCrosshairScanList(centity_t *cent)
 /* Molotov R59: two render passes, one ET_GENERAL entity. The flame model
  * never inherits the smoke-only alpha fade, which broke R58 flame blending. */
 #define BOMBAS_MOLOTOV_SMOKE_TAG 0xB059
+#define BOMBAS_WALL_DECAL_TAG 0xB071
+
+// Project a narrow, irregular liquid splash onto ONLY the contacted BSP face.
+// The renderer clips the quad against map geometry (including stair risers).
+// The source texture contains several smoothly feathered drips, rather than
+// the R70 row of thin square MD3 billboards that floated in front of walls.
+static void CG_BombasWallDecal(centity_t *cent)
+{
+    const entityState_t *s = &cent->currentState;
+    static qhandle_t liquidShader = 0;
+    vec3_t normal, tangent, surface, points[4], offset;
+    vec4_t projection, tint;
+    float elapsed, duration, fall, alpha, width, half, h, top;
+    int i;
+
+    elapsed = (float)(cg.time - s->time);
+    duration = (float)(s->time2 - s->time);
+    if (elapsed <= 0.f || duration <= 0.f || elapsed >= duration)
+        return;
+    if (!liquidShader)
+        liquidShader = trap_R_RegisterShader("models/bombas/molotov/r71/wall_liquid");
+    if (!liquidShader) return;
+    VectorCopy(s->origin2, normal);
+    normal[2] = 0.f;
+    if (VectorNormalize(normal) < .72f) return;
+
+    // R71 texture bottom reaches the base of the actual face over ~1s.
+    // Bound the decal at 10..62 game units for a subtle liquid splash.
+    h = Com_Clamp(10.f, 62.f, s->angles2[0]);
+    width = Com_Clamp(19.f, 42.f, s->angles2[1]);
+    fall = Com_Clamp(.07f, 1.f, elapsed / (720.f + 58.f * s->angles2[2]));
+    fall = fall * fall * (3.f - 2.f * fall);
+    half = width * .5f;
+    top = 5.f;
+    VectorSet(tangent, -normal[1], normal[0], 0.f);
+    VectorMA(cent->lerpOrigin, 2.f, normal, surface);
+    surface[2] += top;
+    // Keep face orientation consistent with downward projector normal:
+    // top-left, bottom-left, bottom-right, top-right.
+    VectorMA(surface, -half, tangent, points[0]);
+    VectorCopy(points[0], points[1]); points[1][2] -= h * fall;
+    VectorMA(surface, half, tangent, points[3]);
+    VectorCopy(points[3], points[2]); points[2][2] -= h * fall;
+    for (i = 0; i < 3; ++i)
+        projection[i] = -normal[i];
+    projection[3] = 9.f;
+    alpha = Com_Clamp(0.f, 1.f, elapsed / 260.f) *
+            (1.f - Com_Clamp(0.f, 1.f, (elapsed - 1300.f) / (duration - 1300.f)));
+    // Soft orange masks, not oversaturated additive stripes.
+    Vector4Set(tint, .95f, .84f, .72f, .68f * alpha);
+    // Negative lifetime = temporary projector this frame. Unlike persistent
+    // marks this does not fill the server/client decal lifetime pool.
+    trap_R_ProjectDecal(liquidShader, 4, points, projection, tint, -1, -1);
+}
+
 
 static void CG_General(centity_t *cent)
 {
 	refEntity_t   ent;
 	entityState_t *s1 = &cent->currentState;
 
+    if (s1->eType == ET_GENERAL && s1->effect1Time == BOMBAS_WALL_DECAL_TAG)
+    {
+        CG_BombasWallDecal(cent);
+        return;
+    }
 	// if set to invisible, skip
 	if (!s1->modelindex)
 	{
@@ -576,6 +636,15 @@ static void CG_General(centity_t *cent)
         cgs.gameModels[s1->modelindex2])
     {
         refEntity_t smoke = ent;
+        // R71: first dark smoke appears at ignition rather than waiting for
+        // native soot mesh to unfold through its ~16 near-flat initial frames.
+        // Smoothly converge to unmodified R69 timing by flame frame 80.
+        {
+            int early = Com_Clamp(0, 80, 80 - ent.frame);
+            smoke.frame = MIN(191, ent.frame + (22 * early) / 80);
+            smoke.oldframe = smoke.frame;
+            smoke.backlerp = 0.f;
+        }
         smoke.hModel        = cgs.gameModels[s1->modelindex2];
         smoke.fadeStartTime = s1->time;
         smoke.fadeEndTime   = s1->time2;
