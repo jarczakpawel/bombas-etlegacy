@@ -2499,14 +2499,26 @@ void CG_EntityEvent(centity_t *cent, vec3_t position)
 	case EV_BOMBAS_MOLOTOV_SCORCH:
 	{
 		vec4_t projection;
-		VectorSet(projection, 0, 0, -1);
 		vec4_t tint;
+		qboolean early = (es->eventParm & 0x80) != 0;
 		static const float strength[6] = { .12f, .17f, .21f, .24f, .27f, .30f };
-		int stage = Com_Clamp(0, 5, es->eventParm >> 1);
-		projection[3] = (es->eventParm & 1) ? 118.f : 66.f;
-		Vector4Set(tint, strength[stage], strength[stage], strength[stage], 1.f);
+		int stage = early ? Com_Clamp(0, 15, (es->eventParm & 0x7e) >> 1)
+		                  : Com_Clamp(0, 5, es->eventParm >> 1);
+		float shade = early ? (stage == 0 ? .027f : .012f + .00045f * stage)
+		                    : strength[stage];
+		VectorSet(projection, 0, 0, -1);
+        // An ultra-faint, softly feathered center spot grows steadily from
+        // impact over 16 x 90ms steps. Old six full-size marks remain exactly
+        // as before from 1.5-2.5s; no new black spot on flame expiration.
+		projection[3] = early ? 21.f + 1.8f * stage
+		                      : (es->eventParm & 1) ? 118.f : 66.f;
+		Vector4Set(tint, shade, shade, shade, 1.f);
 		trap_R_ProjectDecal(cgs.media.burnMarkShader, 1, (vec3_t *) position, projection,
 		                    tint, 17000, 2500);
+        if (early)
+        {
+            break; // Early darkening belongs ONLY to the impact ground center.
+        }
         {
             vec3_t from, to, spot;
             trace_t hit, nearest;

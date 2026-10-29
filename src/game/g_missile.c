@@ -116,15 +116,24 @@ static int G_BombasMolotovVisualFrame(const gentity_t *visual)
 
 static void G_BombasMolotovBurnMark(gentity_t *ent, qboolean main, int begin)
 {
+    // Only the actual impact point starts charring immediately. Six existing
+    // large scorch stages and all satellite timings remain bit-for-bit the
+    // same after 1.5s. Sixteen ultra-light center stages at 90ms spacing
+    // prevent a sudden discrete black patch from appearing at impact.
+    const int earlyCount = main ? 16 : 0;
     int elapsed = level.time - begin;
-    while (ent->count < 6 && elapsed >= 1500 + ent->count * 200)
+    while (ent->count < earlyCount + 6)
     {
+        int early = ent->count < earlyCount;
+        int stage = early ? ent->count : ent->count - earlyCount;
+        int when = early ? stage * 90 : 1500 + stage * 200;
         vec3_t origin;
         gentity_t *event;
+        if (elapsed < when) break;
         VectorCopy(ent->r.currentOrigin, origin);
         origin[2] += 5.f;
         event = G_TempEntity(origin, EV_BOMBAS_MOLOTOV_SCORCH);
-        event->s.eventParm = (ent->count << 1) | (main ? 1 : 0);
+        event->s.eventParm = (stage << 1) | (main ? 1 : 0) | (early ? 0x80 : 0);
         ent->count++;
     }
 }
