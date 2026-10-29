@@ -382,15 +382,13 @@ static void CG_AddEntToCrosshairScanList(centity_t *cent)
 
 typedef struct {
     int entityNum, modelIndex, expiry, count, lastUsed;
-    int slope, flameCount;
-    vec3_t origin;
-    vec3_t flameBase[20];
+    int slope;
+    vec3_t origin, planeNormal, centerGround;
     polyVert_t polys[BOMBAS_POOL_MAX_QUADS*4];
 } bombasTerrainCache_t;
 
 static bombasTerrainCache_t bombasTerrainCache[BOMBAS_POOL_CACHE_SIZE];
 static int bombasTerrainLastTime = 0;
-static qhandle_t bombasSlopeFlameShaders[4] = { 0 };
 
 static int CG_BombasTerrainVariant(int modelIndex)
 {
@@ -407,7 +405,7 @@ static int CG_BombasTerrainVariant(int modelIndex)
     return -1;
 }
 
-static qboolean CG_BombasTerrainPool(centity_t *cent)
+static void CG_BombasTerrainPool(centity_t *cent, refEntity_t *flame)
 {
     const entityState_t *s = &cent->currentState;
     static qhandle_t terrainShaders[7] = { 0 };
@@ -423,10 +421,10 @@ static qboolean CG_BombasTerrainPool(centity_t *cent)
     }
     bombasTerrainLastTime = cg.time;
     v = CG_BombasTerrainVariant(s->modelindex);
-    if (v < 0) return qfalse;
+    if (v < 0) return;
     if (!terrainShaders[v])
         terrainShaders[v] = trap_R_RegisterShader(va("models/bombas/molotov/r73_terrain_%d", v));
-    if (!terrainShaders[v]) return qfalse;
+    if (!terrainShaders[v]) return;
 
     for (k=0; k<BOMBAS_POOL_CACHE_SIZE; ++k) {
         bombasTerrainCache_t *a = &bombasTerrainCache[k];
@@ -449,7 +447,6 @@ static qboolean CG_BombasTerrainPool(centity_t *cent)
         cache->modelIndex=s->modelindex;
         cache->expiry=s->time2;
         cache->count=0;
-        cache->flameCount=0;
         cache->slope=0;
         VectorCopy(cent->lerpOrigin, cache->origin);
 
@@ -476,6 +473,8 @@ static qboolean CG_BombasTerrainPool(centity_t *cent)
                 VectorCopy(cent->lerpOrigin,centerGround);
                 VectorSet(centerNormal,0.f,0.f,1.f);
             }
+            VectorCopy(centerGround,cache->centerGround);
+            VectorCopy(centerNormal,cache->planeNormal);
         }
         for (row=0; row<grid; ++row) for (col=0; col<grid; ++col) {
             int index=(row*stride)*9+col*stride;
@@ -514,31 +513,6 @@ static qboolean CG_BombasTerrainPool(centity_t *cent)
             if (valid[row][col] && valid[row][col+1] &&
                 fabsf(sampled[row][col][2]-sampled[row][col+1][2])>14.f)
                 cache->slope=1;
-        }
-        // Precompute all bases once, source geometry is anchored to actual
-        // trace hits. Only billboard orientation varies with the camera.
-        if (cache->slope) {
-            // Distribute flame tongues around the entire pool rather than
-            // taking the first N samples in row-major order (R74 prototype
-            // crowded the back edge and left gaps in the middle).
-            static const byte mainCoords[20][2] = {
-                {4,4},{2,3},{2,5},{3,2},{3,6},
-                {4,1},{4,7},{5,2},{5,6},{6,3},
-                {6,5},{1,4},{7,4},{2,2},{2,6},
-                {6,2},{6,6},{3,4},{5,4},{4,3}
-            };
-            static const byte outerCoords[9][2] = {
-                {2,2},{1,1},{3,3},{1,3},{3,1},
-                {1,2},{3,2},{2,1},{2,3}
-            };
-            int candidate, limit=v ? 9 : 20;
-            for (candidate=0;candidate<limit;++candidate) {
-                row=v ? outerCoords[candidate][0] : mainCoords[candidate][0];
-                col=v ? outerCoords[candidate][1] : mainCoords[candidate][1];
-                if (!valid[row][col]) continue;
-                VectorCopy(sampled[row][col],cache->flameBase[cache->flameCount]);
-                cache->flameCount++;
-            }
         }
         for (row=0;row<grid-1;++row) for (col=0;col<grid-1;++col) {
             static const int rr[4]={0,0,1,1};
@@ -587,48 +561,19 @@ static qboolean CG_BombasTerrainPool(centity_t *cent)
     if (cache->count>0) {
         trap_R_AddPolysToScene(terrainShaders[v],4,cache->polys,cache->count);
     }
-    if (cache->slope && cache->flameCount > 0) {
-        // Native source MD3s have flat wide horizontal root cards. On steep
-        // ramps substitute fewer genuine 3D camera-facing flames whose feet
-        // follow each real surface sample. The exact original approved
-        // animated sprite atlas and blending are reused by R74 shader clones.
-        int m, numPerShader[4] = { 0, 0, 0, 0 };
-        polyVert_t groupedFlames[4][20*4];
-        vec3_t right;
-        VectorCopy(cg.refdef.viewaxis[1], right);
-        right[2]=0.f;
-        if (VectorNormalize(right)<.2f) VectorSet(right,0.f,1.f,0.f);
-        for (m=0; m<cache->flameCount; ++m) {
-            polyVert_t *flame;
-            float halfwidth=(v ? 11.f : 17.f) + (float)((m*11+v*7)%9);
-            float height=(v ? 31.f : 59.f) + (float)((m*13+v*5)%24);
-            float phase=(float)((m*37+v*17)%100)/100.f;
-            int shidx=(m+v)%4;
-            if (!bombasSlopeFlameShaders[shidx])
-                bombasSlopeFlameShaders[shidx]=trap_R_RegisterShader(
-                    va("models/bombas/molotov/r74_slope_flame_%d",shidx));
-            if (!bombasSlopeFlameShaders[shidx]) continue;
-            flame=&groupedFlames[shidx][numPerShader[shidx]*4];
-            for (n=0;n<4;n++) {
-                float xoff=(n==0 || n==3) ? -halfwidth : halfwidth;
-                float zoff=(n==0 || n==1) ? height : 0.f;
-                VectorMA(cache->flameBase[m],xoff,right,flame[n].xyz);
-                flame[n].xyz[2]+=zoff;
-                flame[n].st[0]=(n==0 || n==3) ? 0.f : 1.f;
-                flame[n].st[1]=(n==0 || n==1) ? 0.f : 1.f;
-                flame[n].modulate[0]=255;flame[n].modulate[1]=255;
-                flame[n].modulate[2]=255;
-                flame[n].modulate[3]=(byte)(202.f+40.f*phase);
-            }
-            numPerShader[shidx]++;
+    if (cache->slope && cache->planeNormal[2] < .972f) {
+        vec3_t forward, left;
+        VectorMA(flame->axis[0], -DotProduct(flame->axis[0], cache->planeNormal),
+                 cache->planeNormal, forward);
+        if (VectorNormalize(forward) > .1f) {
+            CrossProduct(cache->planeNormal, forward, left);
+            VectorCopy(forward, flame->axis[0]);
+            VectorCopy(left, flame->axis[1]);
+            VectorCopy(cache->planeNormal, flame->axis[2]);
+            flame->origin[2] += cache->centerGround[2] - cent->lerpOrigin[2];
+            VectorCopy(flame->origin, flame->oldorigin);
         }
-        for (m=0;m<4;m++)
-            if (numPerShader[m]>0)
-                trap_R_AddPolysToScene(bombasSlopeFlameShaders[m],4,
-                                      groupedFlames[m],numPerShader[m]);
-        return qtrue; // skip enormous flat-footed MD3; keep original smoke
     }
-    return qfalse;
 }
 
 static void CG_BombasWallDecal(centity_t *cent)
@@ -912,15 +857,12 @@ static void CG_General(centity_t *cent)
 		CG_ParticleImpactSmokePuffExtended(cgs.media.smokeParticleShader, muzzle, 1000, 8, 20, 30, alpha, 8.f);
 	}
 
-    // R74: Preserve the approved original big flame on flat ground.
-    // On real ramps and stair ledges, substitute smaller slope-anchored
-    // original flame cards so no huge horizontal flame bodies float in air.
-    {
-        qboolean slopeFlames=qfalse;
-        if (s1->eType == ET_GENERAL && s1->effect1Time == BOMBAS_MOLOTOV_SMOKE_TAG)
-            slopeFlames=CG_BombasTerrainPool(cent);
-        if (!slopeFlames)
-            trap_R_AddRefEntityToScene(&ent);
+    if (s1->eType == ET_GENERAL && s1->effect1Time == BOMBAS_MOLOTOV_SMOKE_TAG) {
+        refEntity_t originalFire = ent;
+        CG_BombasTerrainPool(cent, &originalFire);
+        trap_R_AddRefEntityToScene(&originalFire);
+    } else {
+        trap_R_AddRefEntityToScene(&ent);
     }
 
     // Smoke pass: separately rendered soot-only MD3 with the same position,
