@@ -1512,6 +1512,7 @@ typedef enum
 	EV_MISSILE_FALLING,///< 130
 	EV_PLAYER_HIT,     ///< 131 - hitsound event
 	EV_PLAYER_REVIVE,  ///< 132
+	EV_BOMBAS_MOLOTOV_SCORCH,
 	EV_MAX_EVENTS      ///< 132 - just added as an 'endcap'
 } entity_event_t;
 

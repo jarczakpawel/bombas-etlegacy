@@ -113,46 +113,22 @@ static int G_BombasMolotovVisualFrame(const gentity_t *visual)
     return (elapsed * (BOMBAS_MOLOTOV_FIRE_FRAMES - 1)) / span;
 }
 
-static void G_BombasMolotovAshThink(gentity_t *ent)
+static void G_BombasMolotovBurnMark(gentity_t *ent, qboolean main)
 {
-    int elapsed, stage;
-    if (level.time >= ent->timestamp ||
-        (trap_PointContents(ent->r.currentOrigin, ent->s.number) & CONTENTS_WATER))
-    {
-        G_FreeEntity(ent);
-        return;
-    }
-    if (level.match_pause != PAUSE_NONE)
-    {
-        ent->timestamp += level.frameTime;
-    }
-    elapsed = 6000 - (ent->timestamp - level.time);
-    stage = Com_Clamp(0, 5, elapsed / 1000);
-    ent->s.modelindex = G_ModelIndex(va("models/bombas/molotov/ash_%s_%d.md3",
-                                    ent->count ? "main" : "side", stage));
-    ent->nextthink = level.time + FRAMETIME;
-}
-
-static void G_BombasMolotovStartAsh(gentity_t *ent, qboolean main)
-{
-    ent->classname = "bombas_molotov_ash";
-    ent->s.eType = ET_GENERAL;
-    ent->s.loopSound = 0;
-    ent->s.constantLight = 0;
-    ent->count = main ? 1 : 0;
-    ent->timestamp = level.time + 6000;
-    ent->s.frame = 0;
-    ent->s.modelindex = G_ModelIndex(main ? "models/bombas/molotov/ash_main_0.md3" :
-                                            "models/bombas/molotov/ash_side_0.md3");
-    ent->think = G_BombasMolotovAshThink;
-    ent->nextthink = level.time + FRAMETIME;
+    vec3_t origin;
+    gentity_t *event;
+    VectorCopy(ent->r.currentOrigin, origin);
+    origin[2] += 5.f;
+    event = G_TempEntity(origin, EV_BOMBAS_MOLOTOV_SCORCH);
+    event->s.eventParm = main ? 1 : 0;
+    G_FreeEntity(ent);
 }
 
 static void G_BombasMolotovVisualThink(gentity_t *visual)
 {
     if (level.time >= visual->timestamp)
     {
-        G_BombasMolotovStartAsh(visual, qfalse);
+        G_BombasMolotovBurnMark(visual, qfalse);
         return;
     }
     if (trap_PointContents(visual->r.currentOrigin, visual->s.number) & CONTENTS_WATER)
@@ -184,7 +160,7 @@ static void G_BombasMolotovFireThink(gentity_t *fire)
 
     if (level.time >= fire->timestamp)
     {
-        G_BombasMolotovStartAsh(fire, qtrue);
+        G_BombasMolotovBurnMark(fire, qtrue);
         return;
     }
     if (fire->r.ownerNum < 0 || fire->r.ownerNum >= level.maxclients)

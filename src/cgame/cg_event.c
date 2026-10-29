@@ -2496,6 +2496,15 @@ void CG_EntityEvent(centity_t *cent, vec3_t position)
 		CG_MissileHitPlayer(es->number, es->weapon, position, dir, es->otherEntityNum);
 	}
 	break;
+	case EV_BOMBAS_MOLOTOV_SCORCH:
+	{
+		vec4_t projection;
+		VectorSet(projection, 0, 0, -1);
+		projection[3] = es->eventParm ? 118.f : 66.f;
+		trap_R_ProjectDecal(cgs.media.burnMarkShader, 1, (vec3_t *) position, projection,
+		                    colorWhite, 6000, 1200);
+		break;
+	}
 	case EV_MISSILE_MISS_SMALL:
 	{
 		vec3_t dir;
