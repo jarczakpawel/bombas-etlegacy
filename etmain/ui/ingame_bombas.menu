@@ -16,9 +16,10 @@ menuDef {
     onEsc { close ingame_bombas ; open ingame_main }
 
     WINDOW( "BOMBAS", 50 )
-    SUBWINDOW( 8, 32, WINDOW_WIDTH-16, 166, "VIDEO OPTIONS" )
+    SUBWINDOW( 8, 32, WINDOW_WIDTH-16, 166, "BOMBAS OPTIONS" )
     YESNO( 14, 61, WINDOW_WIDTH-28, 21, "Video effects:", .25, 9, "cg_bombasEventsVideo", "Enable or disable event clips. Audio continues when disabled." )
     YESNO( 14, 92, WINDOW_WIDTH-28, 21, "Voice chat video:", .25, 9, "cg_bombasVoiceVideo", "Show optional video for voice messages. Audio always plays." )
     MULTI( 14, 123, WINDOW_WIDTH-28, 21, "Video size:", .25, 9, "cg_bombasVideoScale", cvarFloatList { "50%" 50 "75%" 75 "100%" 100 "125%" 125 }, "Local video size; 100% is the default." )
+    YESNO( 14, 154, WINDOW_WIDTH-28, 21, "FPS / Ping:", .25, 9, "cg_bombasStats", "Show or hide both FPS and Ping; enabled by default." )
     BUTTONEXT( 14, 206, WINDOW_WIDTH-28, 20, "Back", .28, 14, close ingame_bombas ; open ingame_main, tooltip "Return to the game menu" )
 }

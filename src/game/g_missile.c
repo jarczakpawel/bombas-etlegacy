@@ -113,22 +113,26 @@ static int G_BombasMolotovVisualFrame(const gentity_t *visual)
     return (elapsed * (BOMBAS_MOLOTOV_FIRE_FRAMES - 1)) / span;
 }
 
-static void G_BombasMolotovBurnMark(gentity_t *ent, qboolean main)
+static void G_BombasMolotovBurnMark(gentity_t *ent, qboolean main, int begin)
 {
-    vec3_t origin;
-    gentity_t *event;
-    VectorCopy(ent->r.currentOrigin, origin);
-    origin[2] += 5.f;
-    event = G_TempEntity(origin, EV_BOMBAS_MOLOTOV_SCORCH);
-    event->s.eventParm = main ? 1 : 0;
-    G_FreeEntity(ent);
+    int elapsed = level.time - begin;
+    while (ent->count < 6 && elapsed >= 1500 + ent->count * 200)
+    {
+        vec3_t origin;
+        gentity_t *event;
+        VectorCopy(ent->r.currentOrigin, origin);
+        origin[2] += 5.f;
+        event = G_TempEntity(origin, EV_BOMBAS_MOLOTOV_SCORCH);
+        event->s.eventParm = (ent->count << 1) | (main ? 1 : 0);
+        ent->count++;
+    }
 }
 
 static void G_BombasMolotovVisualThink(gentity_t *visual)
 {
     if (level.time >= visual->timestamp)
     {
-        G_BombasMolotovBurnMark(visual, qfalse);
+        G_FreeEntity(visual);
         return;
     }
     if (trap_PointContents(visual->r.currentOrigin, visual->s.number) & CONTENTS_WATER)
@@ -146,6 +150,10 @@ static void G_BombasMolotovVisualThink(gentity_t *visual)
     {
         visual->s.eType = ET_GENERAL;
     }
+    if (level.match_pause == PAUSE_NONE && level.time >= visual->wait)
+    {
+        G_BombasMolotovBurnMark(visual, qfalse, (int)visual->wait);
+    }
     /* Each visual now follows its own local ignition clock and reaches
      * frame 191 at the same shared expiry time. */
     visual->s.frame = G_BombasMolotovVisualFrame(visual);
@@ -160,7 +168,7 @@ static void G_BombasMolotovFireThink(gentity_t *fire)
 
     if (level.time >= fire->timestamp)
     {
-        G_BombasMolotovBurnMark(fire, qtrue);
+        G_FreeEntity(fire);
         return;
     }
     if (fire->r.ownerNum < 0 || fire->r.ownerNum >= level.maxclients)
@@ -189,6 +197,8 @@ static void G_BombasMolotovFireThink(gentity_t *fire)
         G_FreeEntity(fire);
         return;
     }
+
+    G_BombasMolotovBurnMark(fire, qtrue, fire->timestamp - BOMBAS_MOLOTOV_LIFETIME);
 
     /* Same original R44 flame shaders and sprite shapes; R49's new MD3 frames
      * control individual, overlapping tongue rise/decay. */

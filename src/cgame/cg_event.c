@@ -2500,9 +2500,13 @@ void CG_EntityEvent(centity_t *cent, vec3_t position)
 	{
 		vec4_t projection;
 		VectorSet(projection, 0, 0, -1);
-		projection[3] = es->eventParm ? 118.f : 66.f;
+		vec4_t tint;
+		static const float strength[6] = { .12f, .17f, .21f, .24f, .27f, .30f };
+		int stage = Com_Clamp(0, 5, es->eventParm >> 1);
+		projection[3] = (es->eventParm & 1) ? 118.f : 66.f;
+		Vector4Set(tint, strength[stage], strength[stage], strength[stage], 1.f);
 		trap_R_ProjectDecal(cgs.media.burnMarkShader, 1, (vec3_t *) position, projection,
-		                    colorWhite, 6000, 1200);
+		                    tint, 17000, 2500);
 		break;
 	}
 	case EV_MISSILE_MISS_SMALL:

@@ -3129,12 +3129,44 @@ void CG_ComputeFPS(void)
  * @param[in] comp
  * @return
  */
+static qboolean CG_BombasStatsVisible(void)
+{
+    static vmCvar_t setting;
+    static qboolean registered;
+    char value[16];
+    if (!registered)
+    {
+        trap_Cvar_Register(&setting, "cg_bombasStats", "1", CVAR_ARCHIVE);
+        registered = qtrue;
+    }
+    trap_Cvar_VariableStringBuffer("cg_bombasStats", value, sizeof(value));
+    return atoi(value) != 0;
+}
+
+static int CG_BombasDisplayPing(void)
+{
+    static int displayed = -1;
+    static int refresh;
+    int now = trap_Milliseconds();
+    if (cg.snap && now >= refresh)
+    {
+        int current = Com_Clamp(0, 999, cg.snap->ping);
+        displayed = displayed < 0 ? current : (displayed * 2 + current + 1) / 3;
+        refresh = now + 1500;
+    }
+    return displayed;
+}
+
 void CG_DrawFPS(hudComponent_t *comp)
 {
 	static int displayFPS = -1;
 	static int nextRefresh;
 	int now = trap_Milliseconds();
 
+	if (!CG_BombasStatsVisible())
+	{
+		return;
+	}
 	if (now >= nextRefresh)
 	{
 		displayFPS = fps;
@@ -3420,6 +3452,61 @@ void CG_DrawRoundTimer(hudComponent_t *comp)
 		sWarn = (value > 0 && value <= cg_reinforceWarningTime.integer);
 	}
 
+    if (!Q_stricmp(cg_altHud.string, "Bombas Performance") && cgs.gamestate == GS_PLAYING &&
+        cgs.gametype != GT_WOLF_LMS && !cgs.clientinfo[cg.clientNum].shoutcaster &&
+        s && !cg.generatingNoiseHud)
+    {
+        team_t team = cgs.clientinfo[cg.snap->ps.clientNum].team;
+        int period = team == TEAM_AXIS ? cg_redlimbotime.integer : cg_bluelimbotime.integer;
+        if (period > 0 && (team == TEAM_AXIS || team == TEAM_ALLIES))
+        {
+            int phase = (cgs.aReinfOffset[team] + cg.time - cgs.levelStartTime) % period;
+            float remaining, fraction, blendYellow, blendRed, scale, textY, width, x;
+            vec4_t tint;
+            char own[16];
+            const char *enemy = rt ? rt : "";
+            const char *round = CG_RoundTimerText();
+            float enemyW, ownW, roundW;
+            if (phase < 0)
+            {
+                phase += period;
+            }
+            remaining = (period - phase) / 1000.f;
+            fraction = (period - phase) / (float)period;
+            blendYellow = Com_Clamp(0.f, 1.f, (5.f - remaining) / 1.1f);
+            blendRed = Com_Clamp(0.f, 1.f, (3.f - remaining) / 1.15f);
+            tint[0] = .29f + .71f * blendYellow;
+            tint[1] = .67f + .19f * blendYellow;
+            tint[2] = 1.f - .82f * blendYellow;
+            tint[0] += (1.f - tint[0]) * blendRed;
+            tint[1] += (.18f - tint[1]) * blendRed;
+            tint[2] += (.14f - tint[2]) * blendRed;
+            tint[3] = 1.f;
+            Com_sprintf(own, sizeof(own), "%s", s);
+            scale = CG_ComputeScale(comp);
+            enemyW = rt ? CG_Text_Width_Ext(enemy, scale, 0, &cgs.media.limboFont1) + 5.f : 0.f;
+            ownW = CG_Text_Width_Ext(own, scale, 0, &cgs.media.limboFont1);
+            roundW = CG_Text_Width_Ext(round, scale, 0, &cgs.media.limboFont1);
+            width = enemyW + ownW + 5.f + roundW;
+            x = comp->location.x + (comp->location.w - width) * .5f;
+            textY = comp->location.y + (comp->location.h + CG_Text_Height_Ext(own, scale, 0, &cgs.media.limboFont1)) * .5f;
+            CG_FillRect(comp->location.x, comp->location.y, comp->location.w, comp->location.h, comp->colorBackground);
+            if (rt)
+            {
+                CG_Text_Paint_Ext(x, textY, scale, scale, colorRed, enemy, 0, 0, comp->styleText, &cgs.media.limboFont1);
+                x += enemyW;
+            }
+            CG_Text_Paint_Ext(x, textY, scale, scale, tint, own, 0, 0, comp->styleText, &cgs.media.limboFont1);
+            x += ownW + 5.f;
+            CG_Text_Paint_Ext(x, textY, scale, scale, colorWhite, round, 0, 0, comp->styleText, &cgs.media.limboFont1);
+            CG_FillRect(comp->location.x + 1.f, comp->location.y + comp->location.h - 2.f,
+                        comp->location.w - 2.f, 1.5f, colorBlack);
+            CG_FillRect(comp->location.x + 1.f, comp->location.y + comp->location.h - 2.f,
+                        (comp->location.w - 2.f) * fraction, 1.5f, tint);
+            return;
+        }
+    }
+
 	mt = va("%s%s", "^*", CG_RoundTimerText());
 
 	// single value style, or the "WARMUP" half of the warmup blink cycle
@@ -3464,8 +3551,8 @@ void CG_DrawRoundTimer(hudComponent_t *comp)
 	{
 		CG_DrawCompText(comp, s, comp->colorMain, blink ? ITEM_TEXTSTYLE_BLINK : comp->styleText, &cgs.media.limboFont1);
 	}
-}
 
+}
 /**
  * @brief CG_DrawLocalTime
  * @param[in] comp
@@ -3651,19 +3738,13 @@ void CG_DrawDisconnect(hudComponent_t *comp)
  */
 void CG_DrawPing(hudComponent_t *comp)
 {
-	static int displayPing = -1;
-	static int nextRefresh;
-	int now = trap_Milliseconds();
-	int current = MIN(cg.snap->ping, 999);
-
-	if (now >= nextRefresh)
-	{
-		displayPing = displayPing < 0 ? current : (displayPing * 2 + current + 1) / 3;
-		nextRefresh = now + 1500;
-	}
-
-	CG_DrawCompText(comp, va(comp->style & 1 ? "Ping %d" : "%d", displayPing),
-	                comp->colorMain, comp->styleText, &cgs.media.limboFont1);
+    int ping = CG_BombasDisplayPing();
+    if (!CG_BombasStatsVisible() || ping < 0)
+    {
+        return;
+    }
+    CG_DrawCompText(comp, va(comp->style & 1 ? "Ping %d" : "%d", ping),
+                    comp->colorMain, comp->styleText, &cgs.media.limboFont1);
 }
 
 /**
