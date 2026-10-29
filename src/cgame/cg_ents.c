@@ -391,13 +391,17 @@ static void CG_BombasWallDecal(centity_t *cent)
 
     // R71 texture bottom reaches the base of the actual face over ~1s.
     // Bound the decal at 10..62 game units for a subtle liquid splash.
-    h = Com_Clamp(10.f, 62.f, s->angles2[0]);
-    width = Com_Clamp(19.f, 42.f, s->angles2[1]);
-    fall = Com_Clamp(.07f, 1.f, elapsed / (720.f + 58.f * s->angles2[2]));
+    // R72: drop to the existing ground fire instead of stopping halfway
+    // down a wall. One conforming decal rather than disconnected rows.
+    h = Com_Clamp(12.f, 172.f, s->angles2[0]);
+    width = Com_Clamp(21.f, 52.f, s->angles2[1]);
+    fall = Com_Clamp(.07f, 1.f, elapsed / (660.f + 4.2f * h + 44.f * s->angles2[2]));
     fall = fall * fall * (3.f - 2.f * fall);
     half = width * .5f;
     top = 5.f;
-    VectorSet(tangent, -normal[1], normal[0], 0.f);
+    // IMPORTANT: Q3 decal clipping requires winding normal to MATCH
+    // the projector direction (-surface normal). R71 had it backwards.
+    VectorSet(tangent, normal[1], -normal[0], 0.f);
     VectorMA(cent->lerpOrigin, 2.f, normal, surface);
     surface[2] += top;
     // Keep face orientation consistent with downward projector normal:
@@ -412,10 +416,26 @@ static void CG_BombasWallDecal(centity_t *cent)
     alpha = Com_Clamp(0.f, 1.f, elapsed / 260.f) *
             (1.f - Com_Clamp(0.f, 1.f, (elapsed - 1300.f) / (duration - 1300.f)));
     // Soft orange masks, not oversaturated additive stripes.
-    Vector4Set(tint, .95f, .84f, .72f, .68f * alpha);
-    // Negative lifetime = temporary projector this frame. Unlike persistent
-    // marks this does not fill the server/client decal lifetime pool.
-    trap_R_ProjectDecal(liquidShader, 4, points, projection, tint, -1, -1);
+    Vector4Set(tint, 1.f, .98f, .89f, .92f * alpha);
+    // R72: verified in ET:Legacy itself. Four-point directional projected
+    // polygons could be rejected by the renderer even with correct contact.
+    // Native ONE-POINT omnidirectional decal reliably clips to BSP walls.
+    // Important: 1ms lifetime (not hundreds of milliseconds!) prevents a new
+    // decal accumulating on each frame into a huge orange glowing square.
+    {
+        vec3_t center;
+        float span = Com_Clamp(16.f, 148.f, h * fall);
+        VectorCopy(cent->lerpOrigin, center);
+        center[2] -= span * .49f;
+        projection[3] = span * .51f;
+        // ET projector decals must survive rendering, but avoid frame-by-frame
+        // overdraw accumulation; 80 ms cadence follows the 10.3 Hz atlas.
+        if (cg.time >= cent->miscTime + 82)
+        {
+            cent->miscTime = cg.time;
+            trap_R_ProjectDecal(liquidShader, 1, &center, projection, tint, 110, 60);
+        }
+    }
 }
 
 

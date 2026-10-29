@@ -273,15 +273,19 @@ static void G_BombasSpawnWallFlow(const vec3_t contact, const vec3_t normal,
     }
     if (active >= 24) return;
 
-    // A splash adheres to the CONTACTED face only. R70 projected 112u
-    // upright sprites across real architecture; R71 never draws over more
-    // than 62u at once, and all vertices are clipped by the client renderer.
-    height = Com_Clamp(10.f, 62.f, requestedHeight);
-    VectorMA(contact, 6.f, wallNormal, front);
-    VectorMA(front, -9.f, wallNormal, probe);
+    // R72: ONE continuous, geometry-clipped liquid trail from the bottle
+    // contact toward the original floor pool. Don't chain disconnected MD3s.
+    // Single projection may extend up to 170u for high stair landing walls.
+    height = Com_Clamp(12.f, 172.f, requestedHeight + 5.f);
+    // G_MissileImpact supplies the GRENADE'S CENTER, not the wall point.
+    // The projectile collision hull extends 4u horizontally; R71 probed
+    // only 3u behind that center, frequently missing the wall entirely.
+    // Trace >=32u inward and use the resulting *actual BSP hit position*.
+    VectorMA(contact, 14.f, wallNormal, front);
+    VectorMA(contact, -32.f, wallNormal, probe);
     trap_Trace(&hit, front, NULL, NULL, probe, owner, MASK_SOLID);
-    if (hit.startsolid || hit.fraction >= .99f ||
-        DotProduct(hit.plane.normal, wallNormal) < .78f ||
+    if (hit.startsolid || hit.allsolid || hit.fraction >= .99f ||
+        DotProduct(hit.plane.normal, wallNormal) < .82f ||
         hit.surfaceFlags & (SURF_SKY | SURF_NOIMPACT))
     {
         return;
@@ -304,6 +308,7 @@ static void G_BombasSpawnWallFlow(const vec3_t contact, const vec3_t normal,
     wall->nextthink = level.time + FRAMETIME;
     G_SetOrigin(wall, hit.endpos);
     trap_LinkEntity(wall);
+
 }
 
 static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position, const vec3_t impactNormal)
@@ -353,17 +358,18 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position, cons
         return;
     }
 
-    // On a vertical bottle impact, maintain the approved Claude R69 pool
-    // on the floor. Add cosmetic descending fuel between hit and pool.
-    // Collision remains server-authoritative; no flames through solid walls.
-    if (impactNormal && fabsf(impactNormal[2]) < .42f &&
-        ground.fraction < 1.f && ground.plane.normal[2] >= .65f)
+    // A bottle breaking on a real vertical wall must leave a brief wall
+    // splash even if there is no walkable landing directly below it. The
+    // original ground fire positioning and damage remain untouched.
+    if (impactNormal && fabsf(impactNormal[2]) < .42f)
     {
-        float drop = position[2] - start[2];
-        if (drop >= 12.f && drop <= 300.f)
-            G_BombasSpawnWallFlow(position, impactNormal, drop,
-                                  level.time + BOMBAS_MOLOTOV_LIFETIME,
-                                  missile->s.number, missile->s.number);
+        float drop = (ground.fraction < 1.f && ground.plane.normal[2] >= .65f)
+                     ? position[2] - start[2] : 46.f;
+        if (drop < 14.f) drop = 18.f;
+        G_BombasSpawnWallFlow(position, impactNormal,
+                              Com_Clamp(16.f, 170.f, drop),
+                              level.time + BOMBAS_MOLOTOV_LIFETIME,
+                              missile->s.number, missile->s.number);
     }
 
     fire = G_Spawn();
