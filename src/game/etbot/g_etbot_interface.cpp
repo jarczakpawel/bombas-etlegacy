@@ -318,10 +318,21 @@ static void BombasAvoidFire(gentity_t *bot, usercmd_t &cmd)
             const float candidate = sqrtf(BombasDistSqXY(reach, bombasThreats[j].pos)) - bombasThreats[j].radius;
             if (candidate < clearance) clearance = candidate;
         }
-        score = clearance + 20.f * DotProduct(v, desired) + 14.f * preferredSide * DotProduct(v, tangent);
         if (dist < fire.radius + 20.f)
         {
-            score += 42.f * DotProduct(v, away);
+            // Already burning: immediate escape is more important than
+            // following the waypoint. Full distance gradient points out.
+            score = clearance * 1.3f + 52.f * DotProduct(v, away)
+                    + 12.f * preferredSide * DotProduct(v, tangent);
+        }
+        else
+        {
+            // Just outside the flame: once we have 65 units clearance,
+            // additional retreat has no reward. Prefer sliding AROUND the
+            // flame (stable tangent) while progressing toward the route.
+            // This prevents the bot bouncing back and forth radially.
+            score = fminf(clearance, 65.f) + 35.f * DotProduct(v, desired)
+                    + 28.f * preferredSide * DotProduct(v, tangent);
         }
         if (score > winningScore)
         {
