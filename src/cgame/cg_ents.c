@@ -360,6 +360,10 @@ static void CG_AddEntToCrosshairScanList(centity_t *cent)
  * @brief CG_General
  * @param[in,out] cent
  */
+/* Molotov R59: two render passes, one ET_GENERAL entity. The flame model
+ * never inherits the smoke-only alpha fade, which broke R58 flame blending. */
+#define BOMBAS_MOLOTOV_SMOKE_TAG 0xB059
+
 static void CG_General(centity_t *cent)
 {
 	refEntity_t   ent;
@@ -383,7 +387,7 @@ static void CG_General(centity_t *cent)
 		ent.oldframe -= 1;
 		ent.backlerp  = 1 - cg.frameInterpolation;
 
-		if (cent->currentState.time)
+		if (cent->currentState.time && s1->effect1Time != BOMBAS_MOLOTOV_SMOKE_TAG)
 		{
 			ent.fadeStartTime = cent->currentState.time;
 			ent.fadeEndTime   = cent->currentState.time2;
@@ -562,8 +566,22 @@ static void CG_General(centity_t *cent)
 		CG_ParticleImpactSmokePuffExtended(cgs.media.smokeParticleShader, muzzle, 1000, 8, 20, 30, alpha, 8.f);
 	}
 
-	// add to refresh list
+	// Flame pass: original R57 rendering, original alpha/blending, no forced fade.
 	trap_R_AddRefEntityToScene(&ent);
+
+    // Smoke pass: separately rendered soot-only MD3 with the same position,
+    // orientation and 192-frame timeline. Its own fade cannot affect flames.
+    if (s1->eType == ET_GENERAL && s1->effect1Time == BOMBAS_MOLOTOV_SMOKE_TAG &&
+        s1->modelindex2 > 0 && s1->modelindex2 < MAX_MODELS &&
+        cgs.gameModels[s1->modelindex2])
+    {
+        refEntity_t smoke = ent;
+        smoke.hModel        = cgs.gameModels[s1->modelindex2];
+        smoke.fadeStartTime = s1->time;
+        smoke.fadeEndTime   = s1->time2;
+        // Transparent smoke is drawn after opaque/translucent flame geometry.
+        trap_R_AddRefEntityToScene(&smoke);
+    }
 
 	Com_Memcpy(&cent->refEnt, &ent, sizeof(refEntity_t));
 }

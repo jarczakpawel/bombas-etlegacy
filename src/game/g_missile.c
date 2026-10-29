@@ -41,6 +41,7 @@
 
 #define BOMBAS_MOLOTOV_LIFETIME 8750
 #define BOMBAS_MOLOTOV_RADIUS 108.f
+#define BOMBAS_MOLOTOV_SMOKE_TAG 0xB059
 
 void G_FlameDamage(gentity_t *self, gentity_t *ignoreent);
 
@@ -154,9 +155,7 @@ static void G_BombasMolotovVisualThink(gentity_t *visual)
     {
         G_BombasMolotovBurnMark(visual, qfalse, (int)visual->wait);
     }
-    /* Never shrink the smoke mesh at expiry: the stock renderer smoothly
-     * fades this entity during the final 1.35s, while the smoke keeps rising
-     * and expanding. This also gently fades the nearly-extinguished flames. */
+    /* Smoke-only pass fades during final 1.35s; flame pass stays R57 native. */
     visual->s.time = visual->timestamp - 1350;
     visual->s.time2 = visual->timestamp;
     /* Each visual now follows its own local ignition clock and reaches
@@ -205,8 +204,7 @@ static void G_BombasMolotovFireThink(gentity_t *fire)
 
     G_BombasMolotovBurnMark(fire, qtrue, fire->timestamp - BOMBAS_MOLOTOV_LIFETIME);
 
-    /* Native renderer: finish the smoke with an alpha fade, not a shrinking
-     * billboard. The R58 MD3 geometry continues spreading upward. */
+    /* Smoke-only model fades independently; untouched flame pass stays R57. */
     fire->s.time = fire->timestamp - 1350;
     fire->s.time2 = fire->timestamp;
     /* Same original R44 flame shaders and sprite shapes; R49's new MD3 frames
@@ -270,6 +268,8 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position, cons
     fire->classname = "bombas_molotov_fire";
     fire->s.eType = ET_GENERAL;
     fire->s.modelindex = G_ModelIndex("models/bombas/molotov/fire_patch.md3");
+    fire->s.modelindex2 = G_ModelIndex("models/bombas/molotov/fire_patch_smoke.md3");
+    fire->s.effect1Time = BOMBAS_MOLOTOV_SMOKE_TAG;
     fire->s.loopSound = G_SoundIndex("sound/world/fire_01.wav");
     fire->s.constantLight = (42 << 24) | (22 << 16) | (112 << 8) | 255;
     fire->s.pos.trType = TR_STATIONARY;
@@ -341,6 +341,8 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position, cons
             visual->s.eType = i == 0 ? ET_GENERAL : ET_INVISIBLE;
             visual->wait = (float)(level.time + delays[i]);
             visual->s.modelindex = G_ModelIndex(va("models/bombas/molotov/fire_lick_patch_v%d.md3", i));
+            visual->s.modelindex2 = G_ModelIndex(va("models/bombas/molotov/fire_lick_patch_v%d_smoke.md3", i));
+            visual->s.effect1Time = BOMBAS_MOLOTOV_SMOKE_TAG;
         }
         visual->r.svFlags |= SVF_BROADCAST;
         visual->s.pos.trType = TR_STATIONARY;
