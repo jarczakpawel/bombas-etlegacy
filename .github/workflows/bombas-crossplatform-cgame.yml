@@ -23,14 +23,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
+      - name: Install native Linux build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential gcc-multilib g++-multilib pkg-config
       - name: Build native module
-        uses: maus007/docker-run-action-fork@v1
-        with:
-          image: etlegacy/lnx-build:latest
-          options: -v ${{ github.workspace }}:/code -e CI=true
-          run: |
-            git config --global --add safe.directory /code
-            ./easybuild.sh build ${{ matrix.flags }} -mod
+        shell: bash
+        run: |
+          if [ "${{ matrix.id }}" = 'linux32' ]; then mode=ON; else mode=OFF; fi
+          cmake -S . -B build -DCROSS_COMPILE32=$mode -DBUILD_MOD=ON -DBUILD_CLIENT_MOD=ON -DBUILD_SERVER_MOD=OFF -DBUILD_CLIENT=OFF -DBUILD_SERVER=OFF -DBUILD_MOD_PK3=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target cgame -j 4
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.id }}
