@@ -3224,6 +3224,45 @@ public:
 		}
         BombasAvoidFire(bot, cmd);
         BombasBotRareMolotov(bot, cmd);
+        // Low-probability, geometry-tested counterplay for a visible grenade
+        // nearly exploding beside a bot. Standard Omni-bot dodging keeps
+        // priority at larger distances. No dependence on any map waypoint.
+        if (g_bombasGrenadeKick.integer && bot->health > 0 &&
+            bot->client->ps.pm_type == PM_NORMAL &&
+            !(bot->client->ps.pm_flags & (PMF_LIMBO | PMF_LADDER)) &&
+            !(bot->client->buttons & BUTTON_ACTIVATE))
+        {
+            static int bombasBotKickCheck[MAX_CLIENTS] = { 0 };
+            static int bombasBotKickCooldown[MAX_CLIENTS] = { 0 };
+            if (level.time < bombasBotKickCheck[_client]) bombasBotKickCheck[_client] = 0;
+            if (level.time < bombasBotKickCooldown[_client]) bombasBotKickCooldown[_client] = 0;
+            if (level.time >= bombasBotKickCheck[_client] &&
+                level.time >= bombasBotKickCooldown[_client])
+            {
+                int e;
+                bombasBotKickCheck[_client] = level.time + 270;
+                for (e = level.maxclients; e < level.num_entities; ++e)
+                {
+                    gentity_t *m = &g_entities[e];
+                    if (m->inuse && m->s.eType == ET_MISSILE &&
+                        m->nextthink >= level.time + 550 &&
+                        m->nextthink <= level.time + 1350 &&
+                        G_BombasCanKickGrenade(bot, m))
+                    {
+                        // Deterministic ~1 in 3 chance, avoids jitter and
+                        // only reacts to a grenade already in front of bot.
+                        const unsigned int roll = (unsigned int)(level.time / 270) * 1103515245u +
+                                                  (unsigned int)_client * 12345u;
+                        if (roll % 3u == 0)
+                        {
+                            cmd.buttons |= BUTTON_ACTIVATE;
+                            bombasBotKickCooldown[_client] = level.time + 12000;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
 		trap_BotUserCommand(_client, &cmd);
 	}
 

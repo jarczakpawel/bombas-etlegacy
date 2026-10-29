@@ -1893,6 +1893,7 @@ void G_CalcRank(gclient_t *client);
 
 // g_cmd.c
 void Cmd_Activate_f(gentity_t *ent);
+qboolean G_BombasCanKickGrenade(gentity_t *player, gentity_t *missile);
 void Cmd_Activate2_f(gentity_t *ent);
 qboolean Do_Activate_f(gentity_t *ent, gentity_t *traceEnt);
 void G_LeaveTank(gentity_t *ent, qboolean position);

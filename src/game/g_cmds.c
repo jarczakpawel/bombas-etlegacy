@@ -4307,6 +4307,106 @@ void G_LeaveTank(gentity_t *ent, qboolean position)
 	ent->tankLink  = NULL;
 }
 
+// R69 — grenade kicking, entirely server-side using the normal Activate key.
+// The kicked grenade remains the SAME missile, with the SAME fuse/owner/MOD.
+// No new projectile, network event, bot waypoint or platform-specific client.
+static int bombasLastKick[MAX_CLIENTS] = { 0 };
+
+qboolean G_BombasCanKickGrenade(gentity_t *player, gentity_t *missile)
+{
+    vec3_t eye, toward, forward;
+    trace_t trace;
+    float length;
+
+    if (!g_bombasGrenadeKick.integer || !player || !player->client ||
+        player->health <= 0 || player->client->ps.pm_type != PM_NORMAL ||
+        player->client->ps.pm_flags & (PMF_LIMBO | PMF_TIME_LOCKPLAYER | PMF_LADDER) ||
+        BG_PlayerMounted(player->client->ps.eFlags) ||
+        !missile || !missile->inuse || missile->s.eType != ET_MISSILE ||
+        (missile->s.weapon != WP_GRENADE_LAUNCHER &&
+         missile->s.weapon != WP_GRENADE_PINEAPPLE) ||
+        (missile->classname && !Q_stricmp(missile->classname, "bombas_molotov")) ||
+        missile->nextthink < level.time + 420 ||
+        missile->nextthink > level.time + 5500)
+    {
+        return qfalse;
+    }
+
+    // Only ground-near grenades, not airborne grenades whizzing past heads.
+    if (fabsf(player->client->ps.origin[2] - missile->r.currentOrigin[2]) > 62.f)
+    {
+        return qfalse;
+    }
+    VectorSubtract(missile->r.currentOrigin, player->client->ps.origin, toward);
+    toward[2] = 0.f;
+    length = VectorNormalize(toward);
+    if (length < 12.f || length > 86.f)
+    {
+        return qfalse;
+    }
+    AngleVectors(player->client->ps.viewangles, forward, NULL, NULL);
+    forward[2] = 0.f;
+    VectorNormalize(forward);
+    if (DotProduct(forward, toward) < .55f)
+    {
+        return qfalse;
+    }
+    VectorCopy(player->client->ps.origin, eye);
+    eye[2] += 26.f;
+    trap_Trace(&trace, eye, NULL, NULL, missile->r.currentOrigin,
+               player->s.number, MASK_SOLID);
+    if (trace.startsolid || trace.fraction < .97f)
+    {
+        return qfalse;
+    }
+    return qtrue;
+}
+
+static qboolean G_BombasKickNearestGrenade(gentity_t *player)
+{
+    int i, id;
+    float dist, nearest = 100000.f;
+    gentity_t *best = NULL;
+    vec3_t direction, velocity, base;
+    int *last;
+
+    if (!player || !player->client) return qfalse;
+    id = player->s.number;
+    if (id < 0 || id >= level.maxclients) return qfalse;
+    last = &bombasLastKick[id];
+    if (level.time < *last) *last = 0; // map restart/time rewind
+    if (*last > 0 && level.time - *last < 1100) return qfalse;
+
+    for (i = level.maxclients; i < level.num_entities; ++i)
+    {
+        gentity_t *candidate = &g_entities[i];
+        if (!G_BombasCanKickGrenade(player, candidate)) continue;
+        dist = DistanceSquared(candidate->r.currentOrigin, player->client->ps.origin);
+        if (dist < nearest) { nearest = dist; best = candidate; }
+    }
+    if (!best) return qfalse;
+
+    VectorSubtract(best->r.currentOrigin, player->client->ps.origin, direction);
+    direction[2] = 0.f;
+    VectorNormalize(direction);
+    // A kick travels forward+up, respecting stock physics and existing fuse.
+    VectorCopy(best->r.currentOrigin, base);
+    VectorCopy(base, best->s.pos.trBase);
+    best->s.pos.trTime = level.time;
+    best->s.pos.trType = TR_GRAVITY;
+    VectorScale(direction, 390.f, velocity);
+    velocity[2] = 190.f;
+    VectorCopy(velocity, best->s.pos.trDelta);
+    best->s.groundEntityNum = ENTITYNUM_NONE;
+    best->clipmask |= CONTENTS_BODY;
+    trap_LinkEntity(best);
+    *last = level.time;
+    G_Printf("Bombas: %s %d kicked standard grenade (entity %d, fuse remaining %dms)\n",
+             (player->r.svFlags & SVF_BOT) ? "bot" : "player",
+             id, best->s.number, best->nextthink - level.time);
+    return qtrue;
+}
+
 /**
  * @brief Cmd_Activate_f
  * @param[in,out] ent
@@ -4371,6 +4471,10 @@ void Cmd_Activate_f(gentity_t *ent)
 		G_LeaveTank(ent, qtrue);
 		return;
 	}
+
+    // Kick a visible nearby standard grenade first; normal doors, pickups,
+    // mounted guns and shove continue to work when no grenade is eligible.
+    if (G_BombasKickNearestGrenade(ent)) return;
 
 	AngleVectors(ent->client->ps.viewangles, forward, right, up);
 
