@@ -73,6 +73,280 @@ BotEntity m_EntityHandles[MAX_GENTITIES];
 
 //////////////////////////////////////////////////////////////////////////
 
+// Bombas Molotov avoidance, R65.  Omni-bot's stock navigation already
+// supports dynamic projectile avoidance, but the stationary custom Molotov
+// ET_GENERAL fire was never categorized as a hazard.  This narrow native
+// steering layer is active ONLY during nearby fire and ONLY for Omni-bots.
+// It leaves their route/goals/combat choices alone everywhere else.
+struct BombasFireThreat
+{
+    float pos[3];
+    float radius;
+    int expiry;
+};
+
+static BombasFireThreat bombasThreats[48];
+static int bombasThreatCount = 0;
+static int bombasThreatFrame = -1;
+static int bombasAvoidUntil[MAX_CLIENTS] = { 0 };
+static int bombasAvoidSide[MAX_CLIENTS] = { 0 };
+static int bombasAvoidLastTime[MAX_CLIENTS] = { 0 };
+
+static void BombasRefreshFireThreats()
+{
+    if (bombasThreatFrame == level.framenum)
+    {
+        return;
+    }
+    bombasThreatFrame = level.framenum;
+    bombasThreatCount = 0;
+    if (trap_Cvar_VariableIntegerValue("g_bombasMolotov") != 1 || level.match_pause != PAUSE_NONE)
+    {
+        return;
+    }
+    for (int i = level.maxclients; i < level.num_entities && bombasThreatCount < 48; ++i)
+    {
+        const gentity_t *ent = &g_entities[i];
+        if (!ent->inuse || !ent->classname ||
+            Q_stricmp(ent->classname, "bombas_molotov_fire") ||
+            ent->timestamp < level.time + 220)
+        {
+            continue;
+        }
+        BombasFireThreat &fire = bombasThreats[bombasThreatCount++];
+        VectorCopy(ent->r.currentOrigin, fire.pos);
+        fire.radius = ent->speed > 1.f ? ent->speed : 108.f;
+        fire.expiry = ent->timestamp;
+    }
+}
+
+static float BombasDistSqXY(const vec3_t a, const float b[3])
+{
+    const float dx = a[0] - b[0];
+    const float dy = a[1] - b[1];
+    return dx * dx + dy * dy;
+}
+
+static bool BombasFireIsReachable(const gentity_t *bot, const BombasFireThreat &fire)
+{
+    vec3_t src, dest;
+    trace_t tr;
+    // A burn is effective only near the flame on this physical floor; don't
+    // react to fire in another room behind a wall or two stories below.
+    if (fabsf(bot->client->ps.origin[2] + bot->client->ps.viewheight - fire.pos[2]) > 103.f)
+    {
+        return false;
+    }
+    VectorCopy(bot->client->ps.origin, src);
+    src[2] += bot->client->ps.viewheight;
+    VectorCopy(fire.pos, dest);
+    dest[2] += 8.f;
+    trap_Trace(&tr, src, nullptr, nullptr, dest, bot->s.number, MASK_SOLID);
+    return !tr.startsolid && tr.fraction > .96f;
+}
+
+static bool BombasSafeStep(const gentity_t *bot, const vec3_t direction, float distance)
+{
+    trace_t move, floor;
+    vec3_t start, end, below;
+    VectorCopy(bot->client->ps.origin, start);
+    VectorMA(start, distance, direction, end);
+    // Player-size hull and ground probe: do not strafe into a wall, ledge,
+    // cliff or an inaccessible vertical change while fleeing from the fire.
+    trap_Trace(&move, start, bot->r.mins, bot->r.maxs, end, bot->s.number, MASK_PLAYERSOLID);
+    if (move.startsolid || move.fraction < .82f)
+    {
+        return false;
+    }
+    vec3_t above;
+    VectorCopy(move.endpos, above);
+    above[2] += 18.f;
+    VectorCopy(move.endpos, below);
+    below[2] -= 92.f;
+    // A point-trace from above the player's feet is more reliable than a
+    // player-sized box already touching the floor (which may startsolid).
+    trap_Trace(&floor, above, nullptr, nullptr, below, bot->s.number, MASK_SOLID);
+    return !floor.startsolid && floor.fraction < .96f && floor.plane.normal[2] > .62f;
+}
+
+static void BombasAvoidFire(gentity_t *bot, usercmd_t &cmd)
+{
+    const int client = bot->s.number;
+    if (client < 0 || client >= level.maxclients || !(bot->r.svFlags & SVF_BOT) ||
+        !bot->client || bot->health <= 0 || bot->client->ps.pm_type >= PM_DEAD ||
+        bot->client->ps.pm_flags & (PMF_LIMBO | PMF_TIME_LOCKPLAYER | PMF_LADDER) ||
+        BG_PlayerMounted(bot->client->ps.eFlags) ||
+        bot->client->ps.powerups[PW_INVULNERABLE] >= level.time || bot->waterlevel >= 3)
+    {
+        return;
+    }
+    BombasRefreshFireThreats();
+    if (!bombasThreatCount)
+    {
+        return;
+    }
+    vec3_t forward, right, angles, desired, predicted, position;
+    VectorCopy(bot->client->ps.origin, position);
+    VectorCopy(bot->client->ps.viewangles, angles);
+    angles[PITCH] = angles[ROLL] = 0.f;
+    AngleVectors(angles, forward, right, nullptr);
+    VectorClear(desired);
+    VectorMA(desired, (float)cmd.forwardmove, forward, desired);
+    VectorMA(desired, (float)cmd.rightmove, right, desired);
+    desired[2] = 0.f;
+    const float moveStrength = VectorNormalize(desired);
+    if (moveStrength > 0.f)
+    {
+        VectorMA(position, 155.f, desired, predicted);
+    }
+    else
+    {
+        VectorCopy(position, predicted);
+    }
+    int closestIndex = -1;
+    float bestRisk = 999999.f;
+    for (int i = 0; i < bombasThreatCount; ++i)
+    {
+        const BombasFireThreat &fire = bombasThreats[i];
+        const float currentDist = sqrtf(BombasDistSqXY(position, fire.pos));
+        if (currentDist > fire.radius + 205.f)
+        {
+            continue;
+        }
+        if (!BombasFireIsReachable(bot, fire))
+        {
+            continue;
+        }
+        // Minimum distance from the future linear segment to the hazard.
+        float px = predicted[0] - position[0];
+        float py = predicted[1] - position[1];
+        const float lenSq = px * px + py * py;
+        float f = 0.f;
+        if (lenSq > 1.f)
+        {
+            f = ((fire.pos[0] - position[0]) * px + (fire.pos[1] - position[1]) * py) / lenSq;
+            f = Com_Clamp(0.f, 1.f, f);
+        }
+        vec3_t near;
+        VectorCopy(position, near);
+        near[0] = position[0] + f * px;
+        near[1] = position[1] + f * py;
+        near[2] = position[2];
+        const float closest = sqrtf(BombasDistSqXY(near, fire.pos));
+        if (closest > fire.radius + 52.f && currentDist > fire.radius + 35.f)
+        {
+            continue;
+        }
+        const float urgency = currentDist - fire.radius;
+        if (urgency < bestRisk)
+        {
+            bestRisk = urgency;
+            closestIndex = i;
+        }
+    }
+    if (closestIndex < 0)
+    {
+        return;
+    }
+    const BombasFireThreat &fire = bombasThreats[closestIndex];
+    const float dist = sqrtf(BombasDistSqXY(position, fire.pos));
+    if (bombasAvoidLastTime[client] > level.time)
+    {
+        bombasAvoidSide[client] = 0;
+        bombasAvoidUntil[client] = 0;
+    }
+    bombasAvoidLastTime[client] = level.time;
+
+    vec3_t away;
+    VectorSubtract(position, fire.pos, away);
+    away[2] = 0.f;
+    if (VectorNormalize(away) < .1f)
+    {
+        away[0] = forward[0]; away[1] = forward[1];
+    }
+    vec3_t tangent;
+    VectorSet(tangent, -away[1], away[0], 0.f);
+    const float travel = moveStrength > 0.f ? moveStrength : 96.f;
+    if (bombasAvoidUntil[client] < level.time)
+    {
+        bombasAvoidSide[client] = (desired[0] * tangent[0] + desired[1] * tangent[1]) >= 0 ? 1 : -1;
+        bombasAvoidUntil[client] = level.time + 1300;
+    }
+    const int preferredSide = bombasAvoidSide[client] ? bombasAvoidSide[client] : 1;
+    // Pick a safe local *route segment*, not an instantaneous teleport.
+    // In the inner hot zone retreat radially. Outside it, sidestep to the
+    // preselected tangent then resume Omni-bot's original goal/path.
+    const float radialPriority = dist < fire.radius + 20.f ? 1.25f : .48f;
+    float winningScore = -1e20f;
+    vec3_t winning = { 0.f, 0.f, 0.f };
+    for (int c = 0; c < 14; ++c)
+    {
+        vec3_t v;
+        float score;
+        const float rad = (c % 2) ? 1.f : -1.f;
+        float left = c / 2 + 1.f;
+        if (c == 0)
+        {
+            VectorCopy(away, v);
+        }
+        else if (c <= 4)
+        {
+            VectorScale(tangent, rad * preferredSide * (1.10f - .12f * left), v);
+            VectorMA(v, radialPriority, away, v);
+        }
+        else if (c <= 8)
+        {
+            VectorScale(desired, .7f - .12f * left, v);
+            VectorMA(v, 1.35f, away, v);
+            VectorMA(v, rad * .33f * preferredSide, tangent, v);
+        }
+        else
+        {
+            const float azimuth = 2.f * (float)M_PI * (float)(c - 9) / 5.f;
+            VectorSet(v, cosf(azimuth), sinf(azimuth), 0.f);
+        }
+        v[2] = 0.f;
+        if (VectorNormalize(v) < .01f || !BombasSafeStep(bot, v, 64.f))
+        {
+            continue;
+        }
+        vec3_t reach;
+        VectorMA(position, 95.f, v, reach);
+        float clearance = 1e5f;
+        for (int j = 0; j < bombasThreatCount; ++j)
+        {
+            const float candidate = sqrtf(BombasDistSqXY(reach, bombasThreats[j].pos)) - bombasThreats[j].radius;
+            if (candidate < clearance) clearance = candidate;
+        }
+        score = clearance + 20.f * DotProduct(v, desired) + 14.f * preferredSide * DotProduct(v, tangent);
+        if (dist < fire.radius + 20.f)
+        {
+            score += 42.f * DotProduct(v, away);
+        }
+        if (score > winningScore)
+        {
+            winningScore = score;
+            VectorCopy(v, winning);
+        }
+    }
+    if (winningScore < -1e19f)
+    {
+        // Wall or cliff around the bot: stop and shoot/wait for flame to
+        // expire. Do not keep walking along the stock waypoint into fire.
+        cmd.forwardmove = 0;
+        cmd.rightmove = 0;
+        return;
+    }
+    // Keep the bot's view, weapon, attack and tactic. Only override its
+    // locomotion toward the safe step. It may keep fighting while retreating.
+    cmd.buttons &= ~BUTTON_WALKING;
+    cmd.buttons |= BUTTON_SPRINT;
+    const float fwd = DotProduct(winning, forward);
+    const float side = DotProduct(winning, right);
+    cmd.forwardmove = (signed char)(Com_Clamp(-127.f, 127.f, fwd * travel));
+    cmd.rightmove = (signed char)(Com_Clamp(-127.f, 127.f, side * travel));
+}
+
 // utils partly taken from id code
 #define WC_WEAPON_TIME_LEFT level.time - ps->classWeaponTime
 #define WC_SOLDIER_TIME     level.soldierChargeTime[team - TEAM_AXIS]
@@ -2600,6 +2874,7 @@ public:
 				SetClientViewAngle(bot, missedAim);
 			}
 		}
+        BombasAvoidFire(bot, cmd);
 		trap_BotUserCommand(_client, &cmd);
 	}
 
