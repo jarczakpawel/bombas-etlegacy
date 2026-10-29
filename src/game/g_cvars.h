@@ -67,6 +67,7 @@ extern vmCvar_t g_bombasMolotovWalls;
 extern vmCvar_t g_poison; // Bombas ETPub-compatible poison damage per second
 extern vmCvar_t g_goomba;
 extern vmCvar_t g_bombasAdrenaline;
+extern vmCvar_t g_bombasAdrenalineShare;
 extern vmCvar_t g_speed;
 extern vmCvar_t g_knockback;
 

@@ -675,8 +675,41 @@ gentity_t *Weapon_Syringe(gentity_t *ent)
  */
 gentity_t *Weapon_AdrenalineSyringe(gentity_t *ent)
 {
-	ent->client->ps.powerups[PW_ADRENALINE] = level.time + 10000;
+	if (g_bombasAdrenalineShare.integer &&
+	    ent->client && ent->client->sess.playerType == PC_MEDIC &&
+	    (ent->client->pers.cmd.buttons & BUTTON_WALKING) &&
+	    ent->client->sess.sessionTeam != TEAM_SPECTATOR)
+	{
+		vec3_t start, end, forward;
+		trace_t tr;
+		gentity_t *target;
 
+		VectorCopy(ent->client->ps.origin, start);
+		start[2] += ent->client->ps.viewheight;
+		AngleVectors(ent->client->ps.viewangles, forward, NULL, NULL);
+		VectorMA(start, 84.f, forward, end);
+		trap_Trace(&tr, start, NULL, NULL, end, ent->s.number, MASK_SHOT);
+		if (!tr.startsolid && tr.entityNum >= 0 && tr.entityNum < level.maxclients)
+		{
+			target = &g_entities[tr.entityNum];
+			if (target != ent && target->inuse && target->client &&
+			    target->health > 0 && target->client->ps.pm_type == PM_NORMAL &&
+			    target->client->pers.connected == CON_CONNECTED &&
+			    target->client->sess.sessionTeam == ent->client->sess.sessionTeam)
+			{
+				if (target->client->ps.powerups[PW_ADRENALINE] < level.time + 10000)
+				{
+					target->client->ps.powerups[PW_ADRENALINE] = level.time + 10000;
+				}
+				trap_SendServerCommand(ent->s.number, "cp \"^2Adrenaline shared with teammate!^7\"");
+				trap_SendServerCommand(target->s.number, "cp \"^2Teammate gave you adrenaline!^7\"");
+				G_LogPrintf("Bombas_AdrenalineShare: %d %d\n", ent->s.number, target->s.number);
+				return NULL;
+			}
+		}
+	}
+
+	ent->client->ps.powerups[PW_ADRENALINE] = level.time + 10000;
 	return NULL;
 }
 
