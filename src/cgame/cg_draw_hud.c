@@ -3131,7 +3131,17 @@ void CG_ComputeFPS(void)
  */
 void CG_DrawFPS(hudComponent_t *comp)
 {
-	CG_DrawCompText(comp, (fps == -1) ? "estimating" : va("%i %s", fps, comp->style & 1 ? "FPS" : ""),
+	static int displayFPS = -1;
+	static int nextRefresh;
+	int now = trap_Milliseconds();
+
+	if (now >= nextRefresh)
+	{
+		displayFPS = fps;
+		nextRefresh = now + 1500;
+	}
+
+	CG_DrawCompText(comp, (displayFPS == -1) ? "estimating" : va("%i %s", displayFPS, comp->style & 1 ? "FPS" : ""),
 	                comp->colorMain, comp->styleText, &cgs.media.limboFont1);
 }
 
@@ -3641,11 +3651,19 @@ void CG_DrawDisconnect(hudComponent_t *comp)
  */
 void CG_DrawPing(hudComponent_t *comp)
 {
-	char *s;
+	static int displayPing = -1;
+	static int nextRefresh;
+	int now = trap_Milliseconds();
+	int current = MIN(cg.snap->ping, 999);
 
-	s = va(comp->style & 1 ? "Ping %d" : "%d", cg.snap->ping < 999 ? cg.snap->ping : 999);
+	if (now >= nextRefresh)
+	{
+		displayPing = displayPing < 0 ? current : (displayPing * 2 + current + 1) / 3;
+		nextRefresh = now + 1500;
+	}
 
-	CG_DrawCompText(comp, s, comp->colorMain, comp->styleText, &cgs.media.limboFont1);
+	CG_DrawCompText(comp, va(comp->style & 1 ? "Ping %d" : "%d", displayPing),
+	                comp->colorMain, comp->styleText, &cgs.media.limboFont1);
 }
 
 /**
