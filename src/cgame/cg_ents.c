@@ -384,7 +384,7 @@ typedef struct {
     int entityNum, modelIndex, expiry, count, lastUsed;
     int slope, flameCount;
     vec3_t origin;
-    vec3_t flameBase[14];
+    vec3_t flameBase[20];
     polyVert_t polys[BOMBAS_POOL_MAX_QUADS*4];
 } bombasTerrainCache_t;
 
@@ -413,7 +413,8 @@ static qboolean CG_BombasTerrainPool(centity_t *cent)
     static qhandle_t terrainShaders[7] = { 0 };
     bombasTerrainCache_t *cache = NULL;
     int v, k, n, grid, stride, row, col, r, c;
-    vec3_t sampled[9][9], axis[3];
+    vec3_t sampled[9][9], axis[3], centerNormal, centerGround;
+    qboolean centerValid;
     qboolean valid[9][9];
     float scale;
 
@@ -456,6 +457,26 @@ static qboolean CG_BombasTerrainPool(centity_t *cent)
         stride = v ? 2 : 1;
         scale = v ? .54f : 1.f;
         AnglesToAxis(cent->lerpAngles, axis);
+        // Predict local heights using the real center collision plane. On
+        // 45-degree ramps, a trace with a fixed +22u start would begin INSIDE
+        // the upper part of the slope and discard the vertex entirely.
+        {
+            vec3_t f, t;
+            trace_t centerTrace;
+            VectorCopy(cent->lerpOrigin,f); f[2]+=30.f;
+            VectorCopy(cent->lerpOrigin,t); t[2]-=38.f;
+            CG_Trace(&centerTrace,f,NULL,NULL,t,ENTITYNUM_NONE,MASK_SOLID);
+            centerValid = !centerTrace.startsolid && !centerTrace.allsolid &&
+                          centerTrace.fraction<.99f && centerTrace.plane.normal[2]>=.57f;
+            if (centerValid) {
+                VectorCopy(centerTrace.endpos,centerGround);
+                VectorCopy(centerTrace.plane.normal,centerNormal);
+                if (centerNormal[2]<.972f) cache->slope=1;
+            } else {
+                VectorCopy(cent->lerpOrigin,centerGround);
+                VectorSet(centerNormal,0.f,0.f,1.f);
+            }
+        }
         for (row=0; row<grid; ++row) for (col=0; col<grid; ++col) {
             int index=(row*stride)*9+col*stride;
             vec3_t origin, from, to;
@@ -465,17 +486,17 @@ static qboolean CG_BombasTerrainPool(centity_t *cent)
             VectorCopy(cent->lerpOrigin, origin);
             VectorMA(origin,x,axis[0],origin);
             VectorMA(origin,y,axis[1],origin);
-            VectorCopy(origin,from); from[2]+=22.f;
-            VectorCopy(origin,to);to[2]-=92.f;
-            CG_Trace(&tr,from,NULL,NULL,to,ENTITYNUM_NONE,MASK_SOLID);
-            if (tr.startsolid || tr.allsolid || tr.fraction >= .99f) {
-                from[2]=origin[2]+102.f;
-                to[2]=origin[2]-112.f;
-                CG_Trace(&tr,from,NULL,NULL,to,ENTITYNUM_NONE,MASK_SOLID);
+            if (centerValid) {
+                origin[2]=centerGround[2] -
+                    (centerNormal[0]*(origin[0]-centerGround[0]) +
+                     centerNormal[1]*(origin[1]-centerGround[1]))/centerNormal[2];
             }
+            VectorCopy(origin,from);from[2]+=29.f;
+            VectorCopy(origin,to);to[2]-=48.f;
+            CG_Trace(&tr,from,NULL,NULL,to,ENTITYNUM_NONE,MASK_SOLID);
             valid[row][col]=(!tr.startsolid && !tr.allsolid &&
                                 tr.fraction<.99f && tr.plane.normal[2]>=.57f &&
-                                fabsf(tr.endpos[2]-cent->lerpOrigin[2])<95.f);
+                                fabsf(tr.endpos[2]-origin[2])<28.f);
             if (valid[row][col]) {
                 VectorMA(tr.endpos,1.65f,tr.plane.normal,sampled[row][col]);
                 // A single nonhorizontal patch on a 45-degree ramp must
@@ -497,9 +518,24 @@ static qboolean CG_BombasTerrainPool(centity_t *cent)
         // Precompute all bases once, source geometry is anchored to actual
         // trace hits. Only billboard orientation varies with the camera.
         if (cache->slope) {
-            for (row=1; row<grid-1; ++row) for (col=1; col<grid-1; ++col) {
-                int skip=((row*7+col*11+v*3)&3);
-                if (!valid[row][col] || skip>1 || cache->flameCount>= (v ? 7 : 14)) continue;
+            // Distribute flame tongues around the entire pool rather than
+            // taking the first N samples in row-major order (R74 prototype
+            // crowded the back edge and left gaps in the middle).
+            static const byte mainCoords[20][2] = {
+                {4,4},{2,3},{2,5},{3,2},{3,6},
+                {4,1},{4,7},{5,2},{5,6},{6,3},
+                {6,5},{1,4},{7,4},{2,2},{2,6},
+                {6,2},{6,6},{3,4},{5,4},{4,3}
+            };
+            static const byte outerCoords[9][2] = {
+                {2,2},{1,1},{3,3},{1,3},{3,1},
+                {1,2},{3,2},{2,1},{2,3}
+            };
+            int candidate, limit=v ? 9 : 20;
+            for (candidate=0;candidate<limit;++candidate) {
+                row=v ? outerCoords[candidate][0] : mainCoords[candidate][0];
+                col=v ? outerCoords[candidate][1] : mainCoords[candidate][1];
+                if (!valid[row][col]) continue;
                 VectorCopy(sampled[row][col],cache->flameBase[cache->flameCount]);
                 cache->flameCount++;
             }
@@ -520,8 +556,8 @@ static qboolean CG_BombasTerrainPool(centity_t *cent)
             for (n=0;n<4;++n)
                 VectorAdd(mid,sampled[row+rr[n]][col+cc[n]],mid);
             VectorScale(mid,.25f,mid);
-            VectorCopy(mid,from);from[2]=cent->lerpOrigin[2]+23.f;
-            VectorCopy(mid,to);to[2]=cent->lerpOrigin[2]-93.f;
+            VectorCopy(mid,from);from[2]+=19.f;
+            VectorCopy(mid,to);to[2]-=30.f;
             CG_Trace(&tr,from,NULL,NULL,to,ENTITYNUM_NONE,MASK_SOLID);
             if (tr.startsolid || tr.allsolid || tr.fraction>=.99f ||
                 tr.plane.normal[2]<.57f || fabsf(tr.endpos[2]-average)>4.6f)
@@ -557,15 +593,15 @@ static qboolean CG_BombasTerrainPool(centity_t *cent)
         // follow each real surface sample. The exact original approved
         // animated sprite atlas and blending are reused by R74 shader clones.
         int m, numPerShader[4] = { 0, 0, 0, 0 };
-        polyVert_t groupedFlames[4][14*4];
+        polyVert_t groupedFlames[4][20*4];
         vec3_t right;
         VectorCopy(cg.refdef.viewaxis[1], right);
         right[2]=0.f;
         if (VectorNormalize(right)<.2f) VectorSet(right,0.f,1.f,0.f);
         for (m=0; m<cache->flameCount; ++m) {
             polyVert_t *flame;
-            float halfwidth=(v ? 10.f : 15.f) + (float)((m*11+v*7)%7);
-            float height=(v ? 29.f : 48.f) + (float)((m*13+v*5)%19);
+            float halfwidth=(v ? 11.f : 17.f) + (float)((m*11+v*7)%9);
+            float height=(v ? 31.f : 59.f) + (float)((m*13+v*5)%24);
             float phase=(float)((m*37+v*17)%100)/100.f;
             int shidx=(m+v)%4;
             if (!bombasSlopeFlameShaders[shidx])
