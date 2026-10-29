@@ -2507,6 +2507,35 @@ void CG_EntityEvent(centity_t *cent, vec3_t position)
 		Vector4Set(tint, strength[stage], strength[stage], strength[stage], 1.f);
 		trap_R_ProjectDecal(cgs.media.burnMarkShader, 1, (vec3_t *) position, projection,
 		                    tint, 17000, 2500);
+        {
+            vec3_t from, to, spot;
+            trace_t hit, nearest;
+            float closest = 1.f;
+            int direction;
+            VectorCopy(position, from);
+            from[2] += 30.f;
+            for (direction = 0; direction < 4; direction++)
+            {
+                VectorCopy(from, to);
+                to[direction / 2] += (direction % 2 ? -1.f : 1.f) * 55.f;
+                trap_CM_BoxTrace(&hit, from, to, NULL, NULL, 0, CONTENTS_SOLID);
+                if (!hit.startsolid && hit.fraction < closest &&
+                    fabsf(hit.plane.normal[2]) < .35f &&
+                    !(hit.surfaceFlags & SURF_NOIMPACT))
+                {
+                    nearest = hit;
+                    closest = hit.fraction;
+                }
+            }
+            if (closest < 1.f)
+            {
+                VectorMA(nearest.endpos, 2.f, nearest.plane.normal, spot);
+                VectorScale(nearest.plane.normal, -1.f, projection);
+                projection[3] = (es->eventParm & 1) ? 52.f : 37.f;
+                trap_R_ProjectDecal(cgs.media.burnMarkShader, 1, &spot, projection,
+                                    tint, 17000, 2500);
+            }
+        }
 		break;
 	}
 	case EV_MISSILE_MISS_SMALL:

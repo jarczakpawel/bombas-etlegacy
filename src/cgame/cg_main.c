@@ -2437,6 +2437,11 @@ void CG_Init(int serverMessageNum, int serverCommandSequence, int clientNum, qbo
 		CG_ParseDemoVersion();
 	}
 
+    if (!demoPlayback)
+    {
+        trap_SendConsoleCommand("ui_restart\n");
+    }
+
 	//CG_Printf("Time taken: %i\n", trap_Milliseconds() - startat);
 
 #ifdef FEATURE_EDV

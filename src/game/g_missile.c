@@ -327,9 +327,12 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position, cons
 
         visual = G_Spawn();
         visual->classname = "bombas_molotov_visual";
-        visual->s.eType = i < 2 ? ET_GENERAL : ET_INVISIBLE;
-        visual->wait = (float)(level.time + i * 180);
-        visual->s.modelindex = G_ModelIndex("models/bombas/molotov/fire_lick_patch.md3");
+        {
+            static const int delays[6] = { 0, 580, 1290, 370, 1740, 970 };
+            visual->s.eType = i == 0 ? ET_GENERAL : ET_INVISIBLE;
+            visual->wait = (float)(level.time + delays[i]);
+            visual->s.modelindex = G_ModelIndex(va("models/bombas/molotov/fire_lick_patch_v%d.md3", i));
+        }
         visual->r.svFlags |= SVF_BROADCAST;
         visual->s.pos.trType = TR_STATIONARY;
         visual->timestamp = fire->timestamp;
