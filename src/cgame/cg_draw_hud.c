@@ -3228,10 +3228,10 @@ void CG_DrawFPS(hudComponent_t *comp)
                 ns *= (cw - 2.f) / width;
                 width = CG_Text_Width_Ext(numbers[i], ns, 0, &cgs.media.limboFont1);
             }
-            CG_Text_Paint_Ext(center - width * .5f, top + 10.f,
+            CG_Text_Paint_Ext(center - width * .5f, top + 8.8f,
                               ns, ns, comp->colorMain, numbers[i], 0, 0,
                               comp->styleText, &cgs.media.limboFont1);
-            CG_Text_Paint_Ext(center - caption * .5f, top + 16.5f,
+            CG_Text_Paint_Ext(center - caption * .5f, top + 15.f,
                               labelScale, labelScale, labelColor, names[i], 0, 0,
                               ITEM_TEXTSTYLE_NORMAL, &cgs.media.limboFont1);
         }
