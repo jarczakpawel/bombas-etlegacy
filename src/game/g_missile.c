@@ -319,8 +319,26 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position, cons
         gentity_t *visual;
         vec3_t point, floorEnd, losStart, losEnd, angles;
         trace_t patch, los;
-        float angle = (float)i * (2.f * (float)M_PI / 6.f) + (float)(missile->s.number % 5) * .29f;
-        float radius = (i % 2) ? 82.f : 54.f;
+        // R62: the old alternating 54/82-unit radii produced three outer
+        // corners at 120-degree intervals: a visible TRIANGLE of fire.
+        // Spread all six fire patches around a gently uneven circular edge.
+        // Hash the impact time, entity and position once per throw; every
+        // Molotov gets its own outline, but never changes shape mid-burn.
+        unsigned int impactSeed = (unsigned int)level.time * 1664525u
+                                ^ (unsigned int)missile->s.number * 1013904223u
+                                ^ (unsigned int)((int)(start[0] * 8.f)) * 2246822519u
+                                ^ (unsigned int)((int)(start[1] * 8.f)) * 3266489917u;
+        unsigned int shapeSeed = impactSeed ^ (unsigned int)(i + 1) * 0x9e3779b9u;
+        float rotation, angle, radius;
+        shapeSeed ^= shapeSeed >> 16;
+        shapeSeed *= 0x7feb352du;
+        shapeSeed ^= shapeSeed >> 15;
+        shapeSeed *= 0x846ca68bu;
+        shapeSeed ^= shapeSeed >> 16;
+        rotation = (float)((impactSeed >> 4) & 1023u) * (2.f * (float)M_PI / 1024.f);
+        angle = rotation + (float)i * (2.f * (float)M_PI / 6.f)
+                        + ((float)(shapeSeed & 255u) / 255.f - .5f) * .29f;
+        radius = 65.f + (float)((shapeSeed >> 8) % 17u);
 
         VectorSet(point, start[0] + cosf(angle) * radius, start[1] + sinf(angle) * radius, start[2] + 46.f);
         VectorCopy(point, floorEnd);
