@@ -35,6 +35,7 @@
 
 #include "cg_local.h"
 #include "../game/bg_ebs.h"
+#include "cg_bombas_terrain_template.h"
 
 /**
  * @brief Modifies the entities position and axis by the given
@@ -369,6 +370,155 @@ static void CG_AddEntToCrosshairScanList(centity_t *cent)
 // The renderer clips the quad against map geometry (including stair risers).
 // The source texture contains several smoothly feathered drips, rather than
 // the R70 row of thin square MD3 billboards that floated in front of walls.
+
+// R73: native terrain-conforming model carpet replacement. Exact original
+// Claude atlas/UV from 9x9 MD3 r68floor surfaces, but vertices follow BSP.
+// Floor geometry is sampled once per visible entity (not every frame).
+// Five-by-five smaller satellite carpets replace six enormous overlapping
+// 9x9 planes, yielding 160 total quads instead of 448 flat quads.
+#define BOMBAS_POOL_CACHE_SIZE 40
+#define BOMBAS_POOL_MAX_QUADS 64
+#define BOMBAS_POOL_GRID 9
+
+typedef struct {
+    int entityNum, modelIndex, expiry, count, lastUsed;
+    vec3_t origin;
+    polyVert_t polys[BOMBAS_POOL_MAX_QUADS*4];
+} bombasTerrainCache_t;
+
+static bombasTerrainCache_t bombasTerrainCache[BOMBAS_POOL_CACHE_SIZE];
+static int bombasTerrainLastTime = 0;
+
+static int CG_BombasTerrainVariant(int modelIndex)
+{
+    const char *name;
+    int i;
+    if (modelIndex < 1 || modelIndex >= MAX_MODELS)
+        return -1;
+    name = CG_ConfigString(CS_MODELS + modelIndex);
+    if (!Q_stricmp(name, "models/bombas/molotov/fire_patch.md3"))
+        return 0;
+    for (i = 0; i < 6; ++i)
+        if (!Q_stricmp(name, va("models/bombas/molotov/fire_lick_patch_v%d.md3", i)))
+            return i+1;
+    return -1;
+}
+
+static void CG_BombasTerrainPool(centity_t *cent)
+{
+    const entityState_t *s = &cent->currentState;
+    static qhandle_t terrainShaders[7] = { 0 };
+    bombasTerrainCache_t *cache = NULL;
+    int v, k, n, grid, stride, row, col, r, c;
+    vec3_t sampled[9][9], axis[3];
+    qboolean valid[9][9];
+    float scale;
+
+    if (cg.time < bombasTerrainLastTime) {
+        Com_Memset(bombasTerrainCache, 0, sizeof(bombasTerrainCache));
+    }
+    bombasTerrainLastTime = cg.time;
+    v = CG_BombasTerrainVariant(s->modelindex);
+    if (v < 0) return;
+    if (!terrainShaders[v])
+        terrainShaders[v] = trap_R_RegisterShader(va("models/bombas/molotov/r73_terrain_%d", v));
+    if (!terrainShaders[v]) return;
+
+    for (k=0; k<BOMBAS_POOL_CACHE_SIZE; ++k) {
+        bombasTerrainCache_t *a = &bombasTerrainCache[k];
+        if (a->expiry == s->time2 && a->entityNum == s->number &&
+            a->modelIndex == s->modelindex &&
+            DistanceSquared(a->origin, cent->lerpOrigin) < 1.f) {
+            cache = a;
+            break;
+        }
+    }
+    if (!cache) {
+        // LRU slot, but prefer unused caches. Dynamic meshes are temporary.
+        int best=0;
+        for (k=1; k<BOMBAS_POOL_CACHE_SIZE; ++k)
+            if (bombasTerrainCache[k].expiry < cg.time ||
+                bombasTerrainCache[k].lastUsed < bombasTerrainCache[best].lastUsed)
+                best=k;
+        cache=&bombasTerrainCache[best];
+        cache->entityNum=s->number;
+        cache->modelIndex=s->modelindex;
+        cache->expiry=s->time2;
+        cache->count=0;
+        VectorCopy(cent->lerpOrigin, cache->origin);
+
+        grid = v ? 5 : 9;
+        stride = v ? 2 : 1;
+        scale = v ? .54f : 1.f;
+        AnglesToAxis(cent->lerpAngles, axis);
+        for (row=0; row<grid; ++row) for (col=0; col<grid; ++col) {
+            int index=(row*stride)*9+col*stride;
+            vec3_t origin, from, to;
+            trace_t tr;
+            float x=bombasPoolTemplate[v][index][0]*scale;
+            float y=bombasPoolTemplate[v][index][1]*scale;
+            VectorCopy(cent->lerpOrigin, origin);
+            VectorMA(origin,x,axis[0],origin);
+            VectorMA(origin,y,axis[1],origin);
+            VectorCopy(origin,from); from[2]+=22.f;
+            VectorCopy(origin,to);to[2]-=92.f;
+            CG_Trace(&tr,from,NULL,NULL,to,ENTITYNUM_NONE,MASK_SOLID);
+            valid[row][col]=(!tr.startsolid && !tr.allsolid &&
+                                tr.fraction<.99f && tr.plane.normal[2]>=.57f &&
+                                fabsf(tr.endpos[2]-cent->lerpOrigin[2])<95.f);
+            if (valid[row][col]) {
+                VectorMA(tr.endpos,1.65f,tr.plane.normal,sampled[row][col]);
+            }
+        }
+        for (row=0;row<grid-1;++row) for (col=0;col<grid-1;++col) {
+            static const int rr[4]={0,0,1,1};
+            static const int cc[4]={0,1,1,0};
+            vec3_t mid,from,to;
+            trace_t tr;
+            float average=0.f;
+            polyVert_t *poly;
+            if (!valid[row][col] || !valid[row+1][col] ||
+                !valid[row][col+1] || !valid[row+1][col+1]) continue;
+            for (n=0;n<4;n++) average+=sampled[row+rr[n]][col+cc[n]][2]*.25f;
+            // Catch stair edges, where corners are individually walkable
+            // but a single quad would form a fake 45-degree bridge.
+            VectorClear(mid);
+            for (n=0;n<4;++n)
+                VectorAdd(mid,sampled[row+rr[n]][col+cc[n]],mid);
+            VectorScale(mid,.25f,mid);
+            VectorCopy(mid,from);from[2]=cent->lerpOrigin[2]+23.f;
+            VectorCopy(mid,to);to[2]=cent->lerpOrigin[2]-93.f;
+            CG_Trace(&tr,from,NULL,NULL,to,ENTITYNUM_NONE,MASK_SOLID);
+            if (tr.startsolid || tr.allsolid || tr.fraction>=.99f ||
+                tr.plane.normal[2]<.57f || fabsf(tr.endpos[2]-average)>4.6f)
+                continue;
+            if (cache->count>=BOMBAS_POOL_MAX_QUADS) break;
+            poly=&cache->polys[cache->count*4];
+            for (n=0;n<4;++n) {
+                int idx;
+                float fx,fy,edge=1.f;
+                r=row+rr[n];c=col+cc[n];
+                idx=(r*stride)*9+c*stride;
+                fx=(float)c/(grid-1);fy=(float)r/(grid-1);
+                VectorCopy(sampled[r][c],poly[n].xyz);
+                poly[n].st[0]=bombasPoolTemplate[v][idx][2];
+                poly[n].st[1]=bombasPoolTemplate[v][idx][3];
+                // Vertex alpha softly feathers beyond the source carpet.
+                if (fx<.15f || fx>.85f || fy<.15f || fy>.85f) edge=.55f;
+                poly[n].modulate[0]=255;
+                poly[n].modulate[1]=255;
+                poly[n].modulate[2]=255;
+                poly[n].modulate[3]=(byte)(edge * (v ? 139.f : 195.f));
+            }
+            cache->count++;
+        }
+    }
+    cache->lastUsed = cg.time;
+    if (cache->count>0) {
+        trap_R_AddPolysToScene(terrainShaders[v],4,cache->polys,cache->count);
+    }
+}
+
 static void CG_BombasWallDecal(centity_t *cent)
 {
     const entityState_t *s = &cent->currentState;
@@ -417,23 +567,27 @@ static void CG_BombasWallDecal(centity_t *cent)
             (1.f - Com_Clamp(0.f, 1.f, (elapsed - 1300.f) / (duration - 1300.f)));
     // Soft orange masks, not oversaturated additive stripes.
     Vector4Set(tint, 1.f, .98f, .89f, .92f * alpha);
-    // R72: verified in ET:Legacy itself. Four-point directional projected
-    // polygons could be rejected by the renderer even with correct contact.
-    // Native ONE-POINT omnidirectional decal reliably clips to BSP walls.
-    // Important: 1ms lifetime (not hundreds of milliseconds!) prevents a new
-    // decal accumulating on each frame into a huge orange glowing square.
+    // R73: ONE projector for each contact instead of repeated transient
+    // 110ms decals, which were CPU-bound and stacking orange overdraw.
+    // Shader animMap moves the stain at no additional decal projection cost.
+    // 1-point BSP projection retains known cross-platform native ET support.
     {
         vec3_t center;
-        float span = Com_Clamp(16.f, 148.f, h * fall);
-        VectorCopy(cent->lerpOrigin, center);
-        center[2] -= span * .49f;
-        projection[3] = span * .51f;
-        // ET projector decals must survive rendering, but avoid frame-by-frame
-        // overdraw accumulation; 80 ms cadence follows the 10.3 Hz atlas.
-        if (cg.time >= cent->miscTime + 82)
+        int lifetime;
+        float span = Com_Clamp(17.f, 94.f, h * .84f);
+        if (cent->miscTime != s->time2 && elapsed >= 80.f)
         {
-            cent->miscTime = cg.time;
-            trap_R_ProjectDecal(liquidShader, 1, &center, projection, tint, 110, 60);
+            cent->miscTime = s->time2;
+            VectorCopy(cent->lerpOrigin, center);
+            center[2] -= span * .52f;
+            projection[3] = span * .52f;
+            lifetime = s->time2 - cg.time;
+            if (lifetime > 100)
+            {
+                Vector4Set(tint, .80f, .76f, .72f, .66f);
+                trap_R_ProjectDecal(liquidShader, 1, &center, projection,
+                                    tint, lifetime, 430);
+            }
         }
     }
 }
@@ -646,8 +800,11 @@ static void CG_General(centity_t *cent)
 		CG_ParticleImpactSmokePuffExtended(cgs.media.smokeParticleShader, muzzle, 1000, 8, 20, 30, alpha, 8.f);
 	}
 
-	// Flame pass: original R57 rendering, original alpha/blending, no forced fade.
+	// Flame models R73 keep original Claude tongues, but their old flat
+    // r68floor surface is detached into once-sampled BSP-conforming mesh.
 	trap_R_AddRefEntityToScene(&ent);
+    if (s1->eType == ET_GENERAL && s1->effect1Time == BOMBAS_MOLOTOV_SMOKE_TAG)
+        CG_BombasTerrainPool(cent);
 
     // Smoke pass: separately rendered soot-only MD3 with the same position,
     // orientation and 192-frame timeline. Its own fade cannot affect flames.
