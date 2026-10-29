@@ -382,7 +382,7 @@ static void CG_AddEntToCrosshairScanList(centity_t *cent)
 
 typedef struct {
     int entityNum, modelIndex, expiry, count, lastUsed;
-    int slope;
+    int slope, staircase;
     vec3_t origin, planeNormal, centerGround;
     polyVert_t polys[BOMBAS_POOL_MAX_QUADS*4];
 } bombasTerrainCache_t;
@@ -413,7 +413,7 @@ static void CG_BombasTerrainPool(centity_t *cent, refEntity_t *flame)
     int v, k, n, grid, stride, row, col, r, c;
     vec3_t sampled[9][9], axis[3], centerNormal, centerGround;
     qboolean centerValid;
-    qboolean valid[9][9];
+    qboolean valid[9][9], tread[9][9];
     float scale;
 
     if (cg.time < bombasTerrainLastTime) {
@@ -448,6 +448,7 @@ static void CG_BombasTerrainPool(centity_t *cent, refEntity_t *flame)
         cache->expiry=s->time2;
         cache->count=0;
         cache->slope=0;
+        cache->staircase=0;
         VectorCopy(cent->lerpOrigin, cache->origin);
 
         grid = v ? 5 : 9;
@@ -497,6 +498,7 @@ static void CG_BombasTerrainPool(centity_t *cent, refEntity_t *flame)
                                 tr.fraction<.99f && tr.plane.normal[2]>=.57f &&
                                 fabsf(tr.endpos[2]-origin[2])<28.f);
             if (valid[row][col]) {
+                tread[row][col]=tr.plane.normal[2]>=.972f;
                 VectorMA(tr.endpos,1.65f,tr.plane.normal,sampled[row][col]);
                 // A single nonhorizontal patch on a 45-degree ramp must
                 // not render its enormous flat-bottomed MD3 body card.
@@ -513,6 +515,61 @@ static void CG_BombasTerrainPool(centity_t *cent, refEntity_t *flame)
             if (valid[row][col] && valid[row][col+1] &&
                 fabsf(sampled[row][col][2]-sampled[row][col+1][2])>14.f)
                 cache->slope=1;
+        }
+        if (centerValid && centerNormal[2] >= .972f) {
+            int count=0, flat=0, low=0, middle=0, high=0;
+            float minz=1e9f, maxz=-1e9f;
+            float sumx=0.f, sumy=0.f, sumz=0.f;
+            for (row=0;row<grid;++row) for (col=0;col<grid;++col) {
+                if (!valid[row][col]) continue;
+                count++;
+                sumx+=sampled[row][col][0];
+                sumy+=sampled[row][col][1];
+                sumz+=sampled[row][col][2];
+                if (sampled[row][col][2]<minz) minz=sampled[row][col][2];
+                if (sampled[row][col][2]>maxz) maxz=sampled[row][col][2];
+            }
+            if (count >= (v ? 8 : 18) && maxz-minz >= 14.f && maxz-minz <= 90.f) {
+                float avgx=sumx/count, avgy=sumy/count, avgz=sumz/count;
+                float xx=0.f, xy=0.f, yy=0.f, xz=0.f, yz=0.f, zz=0.f;
+                for (row=0;row<grid;++row) for (col=0;col<grid;++col) {
+                    float x,y,z;
+                    if (!valid[row][col]) continue;
+                    x=sampled[row][col][0]-avgx;
+                    y=sampled[row][col][1]-avgy;
+                    z=sampled[row][col][2]-avgz;
+                    xx+=x*x;xy+=x*y;yy+=y*y;xz+=x*z;yz+=y*z;zz+=z*z;
+                    if (sampled[row][col][2] <= minz + (maxz-minz)*.28f) low++;
+                    else if (sampled[row][col][2] >= minz + (maxz-minz)*.72f) high++;
+                    else middle++;
+                    if (tread[row][col]) flat++;
+                }
+                if (low>=2 && middle>=2 && high>=2 && flat*10>=count*9) {
+                    float det=xx*yy-xy*xy;
+                    if (det>1.f && zz>1.f) {
+                        float gx=(xz*yy-yz*xy)/det;
+                        float gy=(yz*xx-xz*xy)/det;
+                        float error=0.f;
+                        vec3_t fitted;
+                        VectorSet(fitted,-gx,-gy,1.f);
+                        VectorNormalize(fitted);
+                        if (fitted[2]>=.65f && fitted[2]<.989f) {
+                            for (row=0;row<grid;++row) for (col=0;col<grid;++col) {
+                                float d;
+                                if (!valid[row][col]) continue;
+                                d=sampled[row][col][2]-avgz -
+                                  gx*(sampled[row][col][0]-avgx) -
+                                  gy*(sampled[row][col][1]-avgy);
+                                error+=d*d;
+                            }
+                            if (error<zz*.32f && error<count*81.f) {
+                                VectorCopy(fitted,cache->planeNormal);
+                                cache->staircase=1;
+                            }
+                        }
+                    }
+                }
+            }
         }
         for (row=0;row<grid-1;++row) for (col=0;col<grid-1;++col) {
             static const int rr[4]={0,0,1,1};
@@ -561,7 +618,7 @@ static void CG_BombasTerrainPool(centity_t *cent, refEntity_t *flame)
     if (cache->count>0) {
         trap_R_AddPolysToScene(terrainShaders[v],4,cache->polys,cache->count);
     }
-    if (cache->slope && cache->planeNormal[2] < .972f) {
+    if (cache->staircase || (cache->slope && cache->planeNormal[2] < .972f)) {
         vec3_t forward, left;
         VectorMA(flame->axis[0], -DotProduct(flame->axis[0], cache->planeNormal),
                  cache->planeNormal, forward);
