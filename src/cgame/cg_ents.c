@@ -642,6 +642,8 @@ static void CG_BombasWallDecal(centity_t *cent)
     float elapsed, duration, fall, alpha, width, half, h, top;
     int i;
 
+    // R77: short original tongues anchored on the real (possibly curved) face
+    CG_BombasWallFlames(cent);
     elapsed = (float)(cg.time - s->time);
     duration = (float)(s->time2 - s->time);
     if (elapsed <= 0.f || duration <= 0.f || elapsed >= duration)
@@ -917,7 +919,10 @@ static void CG_General(centity_t *cent)
     if (s1->eType == ET_GENERAL && s1->effect1Time == BOMBAS_MOLOTOV_SMOKE_TAG) {
         refEntity_t originalFire = ent;
         CG_BombasTerrainPool(cent, &originalFire);
-        trap_R_AddRefEntityToScene(&originalFire);
+        // R77: identical refEntity unless some original card has no real
+        // surface under it; then the same cards are placed per contact.
+        if (!CG_BombasFireContact(cent, &originalFire))
+            trap_R_AddRefEntityToScene(&originalFire);
     } else {
         trap_R_AddRefEntityToScene(&ent);
     }
