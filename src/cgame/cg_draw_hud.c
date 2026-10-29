@@ -3173,6 +3173,71 @@ void CG_DrawFPS(hudComponent_t *comp)
 		nextRefresh = now + 1500;
 	}
 
+    if (!Q_stricmp(cg_altHud.string, "Bombas Performance"))
+    {
+        // R60: one field, two independent columns. Values above tiny labels.
+        char fpsText[16], pingText[16];
+        const char *names[2] = { "fps", "ping" };
+        const char *numbers[2];
+        vec4_t labelColor;
+        float numberScale = CG_ComputeScale(comp);
+        float labelScale  = numberScale * .66f;
+        float left        = comp->location.x;
+        float top         = comp->location.y;
+        float cw          = comp->location.w * .5f;
+        int ping          = CG_BombasDisplayPing();
+        int i;
+
+        if (displayFPS < 0)
+        {
+            Q_strncpyz(fpsText, "--", sizeof(fpsText));
+        }
+        else
+        {
+            Com_sprintf(fpsText, sizeof(fpsText), "%d", displayFPS);
+        }
+        if (ping < 0)
+        {
+            Q_strncpyz(pingText, "--", sizeof(pingText));
+        }
+        else
+        {
+            Com_sprintf(pingText, sizeof(pingText), "%d", ping);
+        }
+        numbers[0] = fpsText;
+        numbers[1] = pingText;
+
+        Vector4Copy(comp->colorMain, labelColor);
+        labelColor[3] *= .85f;
+        if (comp->showBackGround)
+        {
+            CG_FillRect(left, top, comp->location.w, comp->location.h, comp->colorBackground);
+        }
+        if (comp->showBorder)
+        {
+            CG_DrawRect_FixedBorder(left, top, comp->location.w, comp->location.h, 1.f, comp->colorBorder);
+        }
+        for (i = 0; i < 2; ++i)
+        {
+            float center = left + (i + .5f) * cw;
+            float ns = numberScale;
+            float width = CG_Text_Width_Ext(numbers[i], ns, 0, &cgs.media.limboFont1);
+            float caption = CG_Text_Width_Ext(names[i], labelScale, 0, &cgs.media.limboFont1);
+            if (width > cw - 2.f && width > 0.f)
+            {
+                ns *= (cw - 2.f) / width;
+                width = CG_Text_Width_Ext(numbers[i], ns, 0, &cgs.media.limboFont1);
+            }
+            CG_Text_Paint_Ext(center - width * .5f, top + 13.f,
+                              ns, ns, comp->colorMain, numbers[i], 0, 0,
+                              comp->styleText, &cgs.media.limboFont1);
+            CG_Text_Paint_Ext(center - caption * .5f, top + 24.f,
+                              labelScale, labelScale, labelColor, names[i], 0, 0,
+                              ITEM_TEXTSTYLE_NORMAL, &cgs.media.limboFont1);
+        }
+        return;
+    }
+
 	CG_DrawCompText(comp, (displayFPS == -1) ? "estimating" : va("%i %s", displayFPS, comp->style & 1 ? "FPS" : ""),
 	                comp->colorMain, comp->styleText, &cgs.media.limboFont1);
 }
