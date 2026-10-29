@@ -2225,6 +2225,10 @@ gentity_t *fire_missile(gentity_t *self, vec3_t start, vec3_t dir, int weapon)
 	if (self->client && G_BombasMolotovWeapon(weapon, self->client->sess.sessionTeam))
 	{
 		bolt->classname = "bombas_molotov";
+        if (self->r.svFlags & SVF_BOT)
+        {
+            G_Printf("Bombas: bot %d actually threw Molotov\n", self->s.number);
+        }
 		bolt->s.eFlags &= ~(EF_BOUNCE | EF_BOUNCE_HALF);
 		bolt->damage = 0;
 		bolt->splashDamage = 0;

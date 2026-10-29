@@ -358,6 +358,343 @@ static void BombasAvoidFire(gentity_t *bot, usercmd_t &cmd)
     cmd.rightmove = (signed char)(Com_Clamp(-127.f, 127.f, side * travel));
 }
 
+// R66 rare, map-independent Molotov tactical use for existing Omni-bots.
+// Reuses the native ET grenade input sequence; no special map goals/nav files.
+// This is NOT an extra grenade inventory and does not fire on behalf of humans.
+struct BombasBotThrow
+{
+    int state;           // 0 idle, 1 switching, 2 cook, 3 release
+    int since;
+    int holdStart;
+    int nextCheck;
+    int nextUse;
+    int lastTime;
+    vec3_t target;
+    vec3_t aim;
+    bool chokepoint;
+};
+static BombasBotThrow bombasBotThrow[MAX_CLIENTS];
+static int bombasBotTeamNext[4] = { 0 };
+
+static unsigned int BombasBotHash(unsigned int a)
+{
+    a ^= a >> 16;
+    a *= 0x7feb352du;
+    a ^= a >> 15;
+    a *= 0x846ca68bu;
+    return a ^ (a >> 16);
+}
+
+static bool BombasHasThrowingWeapon(gentity_t *bot)
+{
+    const int w = WP_GRENADE_PINEAPPLE;
+    const weaponTable_t *info = GetWeaponTableData(w);
+    if (bot->client->sess.sessionTeam != TEAM_ALLIES ||
+        !COM_BitCheck(bot->client->ps.weapons, w) || !info)
+    {
+        return false;
+    }
+    return bot->client->ps.ammo[info->ammoIndex] > 0 ||
+           bot->client->ps.ammoclip[info->clipIndex] > 0;
+}
+
+// Approximate the exact native grenade launch velocity with its pitch boost,
+// and trace the parabola into real map collision. Never throw at an unreachable
+// target (e.g. through a roof) or onto our own feet. This is independent of
+// hand-authored waypoint data on any existing or future map.
+static bool BombasBotTraceToss(gentity_t *bot, const vec3_t wanted,
+                               vec3_t aim, vec3_t predicted)
+{
+    vec3_t eye, delta;
+    VectorCopy(bot->client->ps.origin, eye);
+    eye[2] += bot->client->ps.viewheight;
+    VectorSubtract(wanted, eye, delta);
+    delta[2] = 0.f;
+    if (VectorNormalize(delta) < .01f) return false;
+    const float gravity = fmaxf(200.f, (float)trap_Cvar_VariableIntegerValue("g_gravity"));
+    float best = 999999.f;
+    bool found = false;
+    for (int degrees = -9; degrees <= 36; degrees += 3)
+    {
+        vec3_t forward, initial, end, from, velocity, angles;
+        VectorSet(angles, -(float)degrees, atan2f(delta[1], delta[0]) * 180.f / (float)M_PI, 0.f);
+        AngleVectors(angles, forward, nullptr, nullptr);
+        forward[2] += .5f; // original weapon_grenadelauncher_fire
+        VectorNormalize(forward);
+        const float p = fminf(fmaxf((float)degrees, 0.f), 30.f);
+        // Stock toss treats downward/level facing as a 1.3x underhand
+        // factor; upward angles reduce it toward 1x. Search both sides
+        // of horizontal to reach nearby targets on every map, too.
+        const float throwPower = 900.f * (.5f + degrees / 100.f) * (1.3f - .3f * p / 30.f);
+        VectorScale(forward, throwPower, velocity);
+        VectorMA(eye, 8.f, forward, initial);
+        initial[2] -= 8.f;
+        VectorCopy(initial, from);
+        for (int j = 1; j <= 32; ++j)
+        {
+            const float t = j * .075f;
+            VectorMA(initial, t, velocity, end);
+            end[2] -= .5f * gravity * t * t;
+            trace_t hit;
+            trap_Trace(&hit, from, nullptr, nullptr, end, bot->s.number, MASK_MISSILESHOT);
+            if (hit.startsolid) break;
+            if (hit.fraction < 1.f)
+            {
+                const float d = Distance(hit.endpos, wanted);
+                if (hit.plane.normal[2] > .60f && d < 155.f &&
+                    DistanceSquared(hit.endpos, bot->client->ps.origin) > 225.f * 225.f &&
+                    d < best)
+                {
+                    best = d;
+                    VectorCopy(angles, aim);
+                    VectorCopy(hit.endpos, predicted);
+                    found = true;
+                }
+                break;
+            }
+            VectorCopy(end, from);
+        }
+    }
+    return found;
+}
+
+static bool BombasBotValidThrowTarget(gentity_t *bot, gentity_t *enemy,
+                                      vec3_t land, vec3_t aim, bool &choke)
+{
+    vec3_t eye, victim, down, left, right, rightEnd, leftEnd;
+    trace_t tr;
+    if (!enemy->inuse || !enemy->client || enemy->health <= 0 ||
+        enemy->client->sess.sessionTeam == bot->client->sess.sessionTeam ||
+        enemy->client->sess.sessionTeam == TEAM_SPECTATOR ||
+        enemy->client->ps.pm_type >= PM_DEAD)
+    {
+        return false;
+    }
+    VectorCopy(bot->client->ps.origin, eye);
+    eye[2] += bot->client->ps.viewheight;
+    VectorCopy(enemy->client->ps.origin, victim);
+    victim[2] += enemy->client->ps.viewheight;
+    vec3_t delta;
+    VectorSubtract(victim, eye, delta);
+    const float distance = VectorLength(delta);
+    // Mod's pineapple uses the stock toss physics and a 2.5s fuse.
+    if (distance < 245.f || distance > 510.f ||
+        fabsf(delta[2]) > 115.f || !trap_InPVS(eye, victim))
+    {
+        return false;
+    }
+    trap_Trace(&tr, eye, nullptr, nullptr, victim, bot->s.number, MASK_SOLID);
+    if (tr.startsolid || tr.fraction < .97f)
+    {
+        return false;
+    }
+    // Lead by only 0.25s. The grenade is area denial, not a hitscan attack.
+    VectorMA(enemy->client->ps.origin, .25f, enemy->client->ps.velocity, land);
+    VectorCopy(land, down);
+    down[2] -= 180.f;
+    land[2] += 45.f;
+    trap_Trace(&tr, land, nullptr, nullptr, down, enemy->s.number, MASK_SOLID);
+    if (tr.startsolid || tr.fraction >= .99f || tr.plane.normal[2] < .67f ||
+        tr.surfaceFlags & SURF_SKY)
+    {
+        return false;
+    }
+    VectorCopy(tr.endpos, land);
+    vec3_t aimPoint;
+    if (!BombasBotTraceToss(bot, land, aim, aimPoint))
+    {
+        return false;
+    }
+    VectorCopy(aimPoint, land);
+    // Never drop an 108-unit fire patch next to the throwing bot.
+    if (DistanceSquared(land, bot->client->ps.origin) < 230.f * 230.f)
+    {
+        return false;
+    }
+    for (int c = 0; c < level.numConnectedClients; ++c)
+    {
+        const int index = level.sortedClients[c];
+        const gentity_t *other = &g_entities[index];
+        if (index == bot->s.number || !other->client || other->health <= 0)
+        {
+            continue;
+        }
+        if (other->client->sess.sessionTeam == bot->client->sess.sessionTeam &&
+            DistanceSquared(other->client->ps.origin, land) < 195.f * 195.f)
+        {
+            return false;
+        }
+    }
+    // Teamwide avoid wasting grenades in an already-burning area.
+    BombasRefreshFireThreats();
+    for (int i = 0; i < bombasThreatCount; ++i)
+    {
+        if (DistanceSquared(land, bombasThreats[i].pos) < 230.f * 230.f)
+        {
+            return false;
+        }
+    }
+    // Discover chokepoints with inexpensive geometry traces, not map scripts.
+    // Narrow cross-section gives a higher chance, but not a mandatory condition.
+    vec3_t toward, side;
+    VectorSubtract(land, bot->client->ps.origin, toward);
+    toward[2] = 0;
+    if (VectorNormalize(toward) < .01f)
+    {
+        return false;
+    }
+    VectorSet(side, -toward[1], toward[0], 0.f);
+    vec3_t sample;
+    VectorCopy(land, sample);
+    sample[2] += 43.f;
+    VectorMA(sample, 114.f, side, rightEnd);
+    trap_Trace(&tr, sample, nullptr, nullptr, rightEnd, bot->s.number, MASK_SOLID);
+    float rightDistance = tr.fraction * 114.f;
+    VectorMA(sample, -114.f, side, leftEnd);
+    trap_Trace(&tr, sample, nullptr, nullptr, leftEnd, bot->s.number, MASK_SOLID);
+    float leftDistance = tr.fraction * 114.f;
+    choke = leftDistance < 100.f && rightDistance < 100.f &&
+            leftDistance + rightDistance > 65.f;
+    return true;
+}
+
+static bool BombasBotSelectThrow(gentity_t *bot, vec3_t landing, vec3_t aim, bool &narrow)
+{
+    gentity_t *best = nullptr;
+    float score = -1e10f;
+    for (int c = 0; c < level.numConnectedClients; ++c)
+    {
+        gentity_t *enemy = &g_entities[level.sortedClients[c]];
+        vec3_t point, tossAim;
+        bool chokepoint = false;
+        if (!BombasBotValidThrowTarget(bot, enemy, point, tossAim, chokepoint))
+        {
+            continue;
+        }
+        float d = Distance(bot->client->ps.origin, point);
+        float candidate = (chokepoint ? 110.f : 0.f) - fabsf(d - 360.f);
+        if (candidate > score)
+        {
+            score = candidate;
+            best = enemy;
+            VectorCopy(point, landing);
+            VectorCopy(tossAim, aim);
+            narrow = chokepoint;
+        }
+    }
+    return best != nullptr;
+}
+
+static void BombasBotRareMolotov(gentity_t *bot, usercmd_t &cmd)
+{
+    const int id = bot->s.number;
+    if (id < 0 || id >= level.maxclients || !bot->client ||
+        !(bot->r.svFlags & SVF_BOT)) return;
+    BombasBotThrow &state = bombasBotThrow[id];
+    const int now = level.time;
+    const int team = bot->client->sess.sessionTeam;
+    if (now < state.lastTime)
+    {
+        state.state = 0;
+        state.nextCheck = 0;
+        state.nextUse = 0;
+        if (team >= 0 && team < 4) bombasBotTeamNext[team] = 0;
+    }
+    state.lastTime = now;
+    const bool ready = trap_Cvar_VariableIntegerValue("g_bombasMolotov") == 1 &&
+        level.match_pause == PAUSE_NONE && bot->health > 0 &&
+        bot->client->ps.pm_type < PM_DEAD &&
+        !(bot->client->ps.pm_flags & (PMF_LIMBO | PMF_TIME_LOCKPLAYER | PMF_LADDER)) &&
+        !BG_PlayerMounted(bot->client->ps.eFlags) && bot->waterlevel < 3;
+    if (!ready || (state.state && !BombasHasThrowingWeapon(bot)))
+    {
+        state.state = 0;
+        return;
+    }
+    if (!state.state)
+    {
+        if (now < state.nextCheck || now < state.nextUse ||
+            (team >= 0 && team < 4 && now < bombasBotTeamNext[team])) return;
+        const unsigned int roll = BombasBotHash((unsigned int)now / 2400u * 383u ^ id * 7919u);
+        // Checking every 12–19s, attempts limited to roughly every 110–180s
+        // per bot and 40–65s per team at most. Far rarer than standard grenades.
+        state.nextCheck = now + 12000 + (int)(roll % 7000u);
+        if (!BombasHasThrowingWeapon(bot) ||
+            !G_BombasMolotovWeapon(WP_GRENADE_PINEAPPLE, bot->client->sess.sessionTeam)) return;
+        if (!IS_VALID_WEAPON(cmd.weapon)) return;
+        const int type = GetWeaponTableData(cmd.weapon)->type;
+        if (!(type & (WEAPON_TYPE_SMG | WEAPON_TYPE_RIFLE | WEAPON_TYPE_PISTOL | WEAPON_TYPE_SCOPED))) return;
+        if (bot->client->ps.grenadeTimeLeft > 0 ||
+            bot->client->ps.weaponstate != WEAPON_READY) return;
+        vec3_t land, aim;
+        bool choke = false;
+        if (!BombasBotSelectThrow(bot, land, aim, choke)) return;
+        // 22% at a convincing chokepoint; just 7% in an open area.
+        if ((roll >> 8) % 100u >= (choke ? 22u : 7u)) return;
+        VectorCopy(land, state.target);
+        VectorCopy(aim, state.aim);
+        state.chokepoint = choke;
+        state.state = 1;
+        state.since = now;
+        state.holdStart = 0;
+        state.nextUse = now + 110000 + (int)(roll % 70000u);
+        if (team >= 0 && team < 4)
+            bombasBotTeamNext[team] = now + 40000 + (int)(roll % 25000u);
+    }
+    if (now - state.since > 3600)
+    {
+        state.state = 0;
+        return;
+    }
+    // Stock ET switch and attack/release flow (no direct projectile spawn).
+    cmd.weapon = WP_GRENADE_PINEAPPLE;
+    cmd.buttons &= ~BUTTON_ATTACK;
+    cmd.wbuttons &= ~(WBUTTON_RELOAD | WBUTTON_ATTACK2);
+    if (bot->client->ps.weapon == WP_GRENADE_PINEAPPLE)
+    {
+        // Aim fixed by native ballistic trace before beginning the cook.
+        SetClientViewAngle(bot, state.aim);
+    }
+    if (state.state == 1)
+    {
+        if (bot->client->ps.weapon == WP_GRENADE_PINEAPPLE &&
+            bot->client->ps.weaponstate == WEAPON_READY)
+        {
+            state.state = 2;
+            state.holdStart = now;
+        }
+    }
+    if (state.state == 2)
+    {
+        if (bot->client->ps.weapon != WP_GRENADE_PINEAPPLE)
+        {
+            state.state = 0;
+            return;
+        }
+        if (now - state.holdStart < 420)
+        {
+            cmd.buttons |= BUTTON_ATTACK;
+        }
+        else
+        {
+            state.state = 3;
+            state.since = now;
+            // This is intent, not an asserted successful projectile. Actual
+            // thrown Molotov is logged by fire_missile if native weapon fires.
+            G_Printf("Bombas: bot %d released Molotov attack (choke=%d)\n", id, state.chokepoint ? 1 : 0);
+        }
+    }
+    if (state.state == 3)
+    {
+        // Release the fire button; bg_pmove throws on release just as when
+        // a human cooks an ET grenade, then normal Omni-bot combat resumes.
+        if (now - state.since > 300)
+        {
+            state.state = 0;
+        }
+    }
+}
+
 // utils partly taken from id code
 #define WC_WEAPON_TIME_LEFT level.time - ps->classWeaponTime
 #define WC_SOLDIER_TIME     level.soldierChargeTime[team - TEAM_AXIS]
@@ -2886,6 +3223,7 @@ public:
 			}
 		}
         BombasAvoidFire(bot, cmd);
+        BombasBotRareMolotov(bot, cmd);
 		trap_BotUserCommand(_client, &cmd);
 	}
 
