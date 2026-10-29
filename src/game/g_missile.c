@@ -154,6 +154,11 @@ static void G_BombasMolotovVisualThink(gentity_t *visual)
     {
         G_BombasMolotovBurnMark(visual, qfalse, (int)visual->wait);
     }
+    /* Never shrink the smoke mesh at expiry: the stock renderer smoothly
+     * fades this entity during the final 1.35s, while the smoke keeps rising
+     * and expanding. This also gently fades the nearly-extinguished flames. */
+    visual->s.time = visual->timestamp - 1350;
+    visual->s.time2 = visual->timestamp;
     /* Each visual now follows its own local ignition clock and reaches
      * frame 191 at the same shared expiry time. */
     visual->s.frame = G_BombasMolotovVisualFrame(visual);
@@ -200,6 +205,10 @@ static void G_BombasMolotovFireThink(gentity_t *fire)
 
     G_BombasMolotovBurnMark(fire, qtrue, fire->timestamp - BOMBAS_MOLOTOV_LIFETIME);
 
+    /* Native renderer: finish the smoke with an alpha fade, not a shrinking
+     * billboard. The R58 MD3 geometry continues spreading upward. */
+    fire->s.time = fire->timestamp - 1350;
+    fire->s.time2 = fire->timestamp;
     /* Same original R44 flame shaders and sprite shapes; R49's new MD3 frames
      * control individual, overlapping tongue rise/decay. */
     fire->s.frame = G_BombasMolotovFireFrame(fire);
