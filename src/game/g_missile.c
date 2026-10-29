@@ -1319,7 +1319,10 @@ void G_BurnTarget(gentity_t *self, gentity_t *body, qboolean directhit)
 	{
 		if (body->health > 0 && level.time + DEFAULT_SV_FRAMETIME >= body->lastBurnedFrameTime)
 		{
-			G_Damage(body, self->parent, self->parent, vec3_origin, self->r.currentOrigin, 2, 0, MOD_FLAMETHROWER);
+            // Same physical damage, distinct Nitro Solvent cause of death.
+            const meansOfDeath_t burnMOD = (self->classname && !Q_stricmp(self->classname, "bombas_molotov_fire"))
+                                           ? MOD_BOMBAS_NITRO : MOD_FLAMETHROWER;
+            G_Damage(body, self->parent, self->parent, vec3_origin, self->r.currentOrigin, 2, 0, burnMOD);
 			body->lastBurnedFrameTime = level.time;
 		}
 		return;
@@ -1350,7 +1353,9 @@ void G_BurnTarget(gentity_t *self, gentity_t *body, qboolean directhit)
 
 	if (self->count && self->parent->client)
 	{
-		G_addStats(body, self->parent, GetWeaponTableData(WP_FLAMETHROWER)->damage, MOD_FLAMETHROWER);
+        const meansOfDeath_t burnMOD = (self->classname && !Q_stricmp(self->classname, "bombas_molotov_fire"))
+                                       ? MOD_BOMBAS_NITRO : MOD_FLAMETHROWER;
+        G_addStats(body, self->parent, GetWeaponTableData(WP_FLAMETHROWER)->damage, burnMOD);
 		self->count = 0;
 	}
 }

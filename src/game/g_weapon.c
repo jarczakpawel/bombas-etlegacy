@@ -4023,6 +4023,7 @@ FLAMETHROWER
 void G_BurnMeGood(gentity_t *self, gentity_t *body, gentity_t *chunk, const qboolean directhit)
 {
 	vec3_t origin;
+    meansOfDeath_t burnMOD;
 
 	// normalize burn dps
 	// direct hits every 50ms, indirect (chunk damage) every 100ms
@@ -4046,7 +4047,12 @@ void G_BurnMeGood(gentity_t *self, gentity_t *body, gentity_t *chunk, const qboo
 		VectorCopy(self->r.currentOrigin, origin);
 	}
 
-	G_Damage(body, self, self, vec3_origin, origin, GetWeaponTableData(WP_FLAMETHROWER)->damage, 0, MOD_FLAMETHROWER);
+    // Custom Molotov fire shares ordinary flame DPS but must NOT be logged
+    // as the real flamethrower. Only its own ground-fire entity uses this MOD.
+    burnMOD = (chunk && chunk->classname &&
+               !Q_stricmp(chunk->classname, "bombas_molotov_fire"))
+              ? MOD_BOMBAS_NITRO : MOD_FLAMETHROWER;
+    G_Damage(body, self, self, vec3_origin, origin, GetWeaponTableData(WP_FLAMETHROWER)->damage, 0, burnMOD);
 
 	// make em burn
 	if (body->client && (body->health <= 0 || body->flameQuota > 0)) // was > FLAME_THRESHOLD

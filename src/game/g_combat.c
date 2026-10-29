@@ -1484,7 +1484,7 @@ void G_DamageExt(gentity_t *targ, gentity_t *inflictor, gentity_t *attacker, vec
 		}
 	}
 
-	if (targ->waterlevel >= 3 && mod == MOD_FLAMETHROWER)
+	if (targ->waterlevel >= 3 && (mod == MOD_FLAMETHROWER || mod == MOD_BOMBAS_NITRO))
 	{
 		return;
 	}
@@ -1519,7 +1519,7 @@ void G_DamageExt(gentity_t *targ, gentity_t *inflictor, gentity_t *attacker, vec
 
 		if ((targ->spawnflags & 1024) && !targ->isProp)
 		{
-			if (mod != MOD_FLAMETHROWER)
+			if (mod != MOD_FLAMETHROWER && mod != MOD_BOMBAS_NITRO)
 			{
 				return;
 			}

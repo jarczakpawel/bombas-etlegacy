@@ -1142,6 +1142,10 @@ typedef enum
 	MOD_BACKSTAB,
 	MOD_MP34, // Allied Sten alternative
 
+    // Bombas: distinguish burning Nitro Solvent from the real flamethrower.
+    // Append only; never renumber existing ET means-of-death values.
+    MOD_BOMBAS_NITRO,
+
 	MOD_NUM_MODS
 
 } meansOfDeath_t;
