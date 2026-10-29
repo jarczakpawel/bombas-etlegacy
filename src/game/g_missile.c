@@ -226,6 +226,99 @@ static void G_BombasMolotovFireThink(gentity_t *fire)
     fire->nextthink = level.time + FRAMETIME;
 }
 
+// R70: flowing fuel on real wall faces and short stair risers.
+// Small cosmetic ET_GENERAL models, never create extra damage volumes.
+// They use ordinary game model registration and stock client rendering,
+// so the exact same binaries work on Windows/Linux/macOS.
+static int G_BombasWallModelLength(int length)
+{
+    if (length <= 24) return 24;
+    if (length <= 48) return 48;
+    if (length <= 80) return 80;
+    return 112;
+}
+
+static void G_BombasWallFireThink(gentity_t *wall)
+{
+    int begin = (int)wall->wait;
+    int remaining, elapsed, span;
+    if (level.time >= wall->timestamp)
+    {
+        G_FreeEntity(wall);
+        return;
+    }
+    if (level.match_pause != PAUSE_NONE)
+    {
+        wall->timestamp += level.frameTime;
+        wall->wait += level.frameTime;
+        wall->nextthink = level.time + FRAMETIME;
+        return;
+    }
+    remaining = wall->timestamp - begin;
+    elapsed = level.time - begin;
+    span = remaining > 0 ? remaining : 1;
+    if (elapsed < 0) wall->s.eType = ET_INVISIBLE;
+    else
+    {
+        wall->s.eType = ET_GENERAL;
+        wall->s.frame = Com_Clamp(0, BOMBAS_MOLOTOV_FIRE_FRAMES - 1,
+                                 elapsed * (BOMBAS_MOLOTOV_FIRE_FRAMES - 1) / span);
+    }
+    wall->nextthink = level.time + FRAMETIME;
+}
+
+// Caller supplies a surface contact on a vertical non-sky face, wall-normal,
+// and how much of that face to cover downwards. Long wall drops are segmented
+// so no piece is stretched or allowed to cover arbitrary world geometry.
+static void G_BombasSpawnWallFlow(const vec3_t contact, const vec3_t normal,
+                                  float requestedHeight, int expiry, int owner,
+                                  int variation)
+{
+    vec3_t wallNormal, origin, angles;
+    float remaining, offset;
+    int pieces, n, active = 0, modelLength;
+    if (!g_bombasMolotovWalls.integer || expiry <= level.time + 350 ||
+        fabsf(normal[2]) > .42f || requestedHeight < 12.f ||
+        requestedHeight > 300.f) return;
+    VectorSet(wallNormal, normal[0], normal[1], 0.f);
+    if (VectorNormalize(wallNormal) < .75f) return;
+    for (n = level.maxclients; n < level.num_entities; ++n)
+        if (g_entities[n].inuse && g_entities[n].classname &&
+            !Q_stricmp(g_entities[n].classname, "bombas_wall_flow")) ++active;
+    if (active >= 48) return;
+
+    remaining = requestedHeight;
+    offset = 0.f;
+    // Max three cosmetic entities for a very tall hit, one for short stairs.
+    for (pieces = 0; pieces < 3 && remaining > 9.f && active + pieces < 48; ++pieces)
+    {
+        gentity_t *wall;
+        modelLength = G_BombasWallModelLength((int)ceilf(remaining));
+        VectorMA(contact, 4.0f, wallNormal, origin);
+        origin[2] -= offset;
+        if (trap_PointContents(origin, owner) & CONTENTS_WATER) break;
+        wall = G_Spawn();
+        wall->classname = "bombas_wall_flow";
+        wall->s.eType = ET_INVISIBLE;
+        wall->s.modelindex = G_ModelIndex(va("models/bombas/molotov/r70/wall_flow_%d.md3", modelLength));
+        wall->r.svFlags |= SVF_BROADCAST;
+        wall->s.pos.trType = TR_STATIONARY;
+        wall->s.apos.trType = TR_STATIONARY;
+        wall->timestamp = expiry;
+        // Mild delayed trickle, staggered from upper segment to lower.
+        wall->wait = (float)(level.time + 100 + 85 * pieces + 30 * (variation % 3));
+        wall->think = G_BombasWallFireThink;
+        wall->nextthink = level.time + FRAMETIME;
+        G_SetOrigin(wall, origin);
+        // Local X = wall tangent, local Y = wall outward, Z = gravity.
+        VectorSet(angles, 0.f, atan2f(-wallNormal[0], wallNormal[1]) * 180.f / (float)M_PI, 0.f);
+        G_SetAngle(wall, angles);
+        trap_LinkEntity(wall);
+        offset += modelLength;
+        remaining -= modelLength;
+    }
+}
+
 static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position, const vec3_t impactNormal)
 {
     gentity_t *owner;
@@ -271,6 +364,19 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position, cons
     {
         G_FreeEntity(missile);
         return;
+    }
+
+    // On a vertical bottle impact, maintain the approved Claude R69 pool
+    // on the floor. Add cosmetic descending fuel between hit and pool.
+    // Collision remains server-authoritative; no flames through solid walls.
+    if (impactNormal && fabsf(impactNormal[2]) < .42f &&
+        ground.fraction < 1.f && ground.plane.normal[2] >= .65f)
+    {
+        float drop = position[2] - start[2];
+        if (drop >= 12.f && drop <= 300.f)
+            G_BombasSpawnWallFlow(position, impactNormal, drop,
+                                  level.time + BOMBAS_MOLOTOV_LIFETIME,
+                                  missile->s.number, missile->s.number);
     }
 
     fire = G_Spawn();
@@ -358,7 +464,47 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position, cons
         trap_Trace(&los, losStart, NULL, NULL, losEnd, missile->s.number, MASK_SOLID);
         if (los.startsolid || los.fraction < .98f)
         {
+            // A low stair riser between two nearby floor samples is not
+            // an arbitrary wall: visible downward edge, short height and
+            // nearly vertical obstacle normal. Bridge ONLY that edge with
+            // a narrow flowing ribbon. Do not propagate flames behind it.
+            float step = los.endpos[2] - patch.endpos[2];
+            if (!los.startsolid && los.fraction < .98f &&
+                fabsf(los.plane.normal[2]) < .3f &&
+                step >= 12.f && step <= 72.f &&
+                patch.endpos[2] < start[2] - 8.f)
+            {
+                G_BombasSpawnWallFlow(los.endpos, los.plane.normal, step,
+                                      fire->timestamp, missile->s.number, i);
+            }
             continue;
+        }
+
+        // Short stair risers may be below the normal LOS at +18 units.
+        // Probe a low path as well; add a cosmetic wall-to-floor bridge only
+        // when a real vertical face separates an upper and lower landing.
+        if (g_bombasMolotovWalls.integer && i % 2 == 0 &&
+            patch.endpos[2] < start[2] - 12.f &&
+            patch.endpos[2] >= start[2] - 72.f)
+        {
+            vec3_t nearTop, nearBottom;
+            trace_t lowPath;
+            VectorCopy(start, nearTop);
+            VectorCopy(patch.endpos, nearBottom);
+            nearTop[2] += 4.f;
+            nearBottom[2] += 4.f;
+            trap_Trace(&lowPath, nearTop, NULL, NULL, nearBottom,
+                       missile->s.number, MASK_SOLID);
+            if (!lowPath.startsolid && lowPath.fraction > .1f &&
+                lowPath.fraction < .98f &&
+                fabsf(lowPath.plane.normal[2]) < .30f)
+            {
+                float step = lowPath.endpos[2] - patch.endpos[2];
+                if (step >= 12.f && step <= 72.f)
+                    G_BombasSpawnWallFlow(lowPath.endpos,
+                                          lowPath.plane.normal, step,
+                                          fire->timestamp, missile->s.number, i);
+            }
         }
 
         visual = G_Spawn();
