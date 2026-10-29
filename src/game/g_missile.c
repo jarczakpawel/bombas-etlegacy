@@ -79,10 +79,10 @@ static qboolean G_BombasMolotovProjectile(const gentity_t *ent)
 }
 
 /* The three flame models still use the original R32 geometry/shaders.
- * Their 128 MD3 frames smoothly shrink only the flame heights while the
- * original sprite animMap continues to flicker independently.
- * All entities share one lifetime and their original spawn/impact layout. */
-#define BOMBAS_MOLOTOV_FIRE_FRAMES 128
+ * Their 192 MD3 frames animate individually staggered flame tongues,
+ * growing from zero, overlapping and fading smoothly. The original R44
+ * sprite shaders/textures and gameplay lifetimes remain unchanged. */
+#define BOMBAS_MOLOTOV_FIRE_FRAMES 192
 static int G_BombasMolotovFireFrame(const gentity_t *fire)
 {
     int elapsed = BOMBAS_MOLOTOV_LIFETIME - (fire->timestamp - level.time);
@@ -99,6 +99,20 @@ static int G_BombasMolotovFireFrame(const gentity_t *fire)
     return frame;
 }
 
+/* Each decorative floor patch must BIRTH at frame zero at its own delayed
+ * reveal time. Previously all satellites sampled the central impact clock,
+ * so a late patch appeared already bright and looked like a sudden fireball.
+ * Keep the same global expiry and the original floor/wall spread traces. */
+static int G_BombasMolotovVisualFrame(const gentity_t *visual)
+{
+    int begin = (int)visual->wait;
+    int span = visual->timestamp - begin;
+    int elapsed = level.time - begin;
+    if (elapsed <= 0 || span <= 0) return 0;
+    if (elapsed >= span) return BOMBAS_MOLOTOV_FIRE_FRAMES - 1;
+    return (elapsed * (BOMBAS_MOLOTOV_FIRE_FRAMES - 1)) / span;
+}
+
 static void G_BombasMolotovVisualThink(gentity_t *visual)
 {
     if (level.time >= visual->timestamp ||
@@ -111,15 +125,18 @@ static void G_BombasMolotovVisualThink(gentity_t *visual)
     if (level.match_pause != PAUSE_NONE)
     {
         visual->timestamp += level.frameTime;
+        visual->wait += level.frameTime;
     }
     else if (visual->s.eType == ET_INVISIBLE && level.time >= visual->wait)
     {
         visual->s.eType = ET_GENERAL;
     }
-    /* No sudden jump to fire_embers: geometry itself shrinks over 128 levels.
-     * Update fast enough to avoid multi-frame leaps between snapshots. */
-    visual->s.frame = G_BombasMolotovFireFrame(visual);
-    visual->nextthink = level.time + 75;
+    /* Each visual now follows its own local ignition clock and reaches
+     * frame 191 at the same shared expiry time. */
+    visual->s.frame = G_BombasMolotovVisualFrame(visual);
+    /* 192 distinct MD3 fire phases over 8.75s, update each server frame
+     * instead of 75ms to avoid skipping several soft-growth steps. */
+    visual->nextthink = level.time + FRAMETIME;
 }
 
 static void G_BombasMolotovFireThink(gentity_t *fire)
@@ -153,7 +170,8 @@ static void G_BombasMolotovFireThink(gentity_t *fire)
         return;
     }
 
-    /* Keep precisely the original flames, now lowering them in small steps. */
+    /* Same original R44 flame shaders and sprite shapes; R49's new MD3 frames
+     * control individual, overlapping tongue rise/decay. */
     fire->s.frame = G_BombasMolotovFireFrame(fire);
 
     fire->s.constantLight = ((25 + ((level.time / 110 + fire->s.number * 3) % 13)) << 24) |
@@ -258,7 +276,9 @@ static void G_BombasMolotovBurst(gentity_t *missile, const vec3_t position, cons
 
         VectorSet(point, start[0] + cosf(angle) * radius, start[1] + sinf(angle) * radius, start[2] + 46.f);
         VectorCopy(point, floorEnd);
-        floorEnd[2] -= 104.f;
+        /* Cosmetic-only longer downward search for lower stair landings.
+         * Retains the original LOS obstruction trace against walls. */
+        floorEnd[2] -= 180.f;
         trap_Trace(&patch, point, NULL, NULL, floorEnd, missile->s.number, MASK_SOLID);
         if (patch.fraction >= 1.f || patch.startsolid || patch.plane.normal[2] < .65f)
         {
