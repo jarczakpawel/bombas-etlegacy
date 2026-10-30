@@ -670,12 +670,8 @@ static void G_BombasEmbeddedKnifeThink(gentity_t *knife)
         VectorMA(normal, knife->pos2[i], axis[i], normal);
     }
     G_SetOrigin(knife, position);
-    if (level.time >= knife->s.apos.trTime + knife->s.apos.trDuration)
-    {
-        knife->s.apos.trType = TR_STATIONARY;
-        vectoangles(normal, knife->s.apos.trBase);
-        VectorClear(knife->s.apos.trDelta);
-    }
+    vectoangles(normal, knife->s.apos.trBase);
+    knife->s.apos.trBase[ROLL] = knife->pos3[0];
     trap_LinkEntity(knife);
     knife->nextthink = level.time + FRAMETIME;
 }
@@ -796,20 +792,27 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 		{
 			VectorScale(trace->plane.normal, -1.f, direction);
 		}
-		VectorMA(direction, -.3f, trace->plane.normal, direction);
-		VectorNormalize(direction);
+		if (DotProduct(direction, trace->plane.normal) > -.58f)
+		{
+			VectorMA(direction, -.58f - DotProduct(direction, trace->plane.normal), trace->plane.normal, direction);
+			VectorNormalize(direction);
+		}
+		vectoangles(direction, targetAngles);
+		targetAngles[PITCH] += 12.f * sinf(DEG2RAD(flightAngles[PITCH]));
+		targetAngles[ROLL] = 12.f * cosf(DEG2RAD(flightAngles[PITCH]));
+		AngleVectors(targetAngles, direction, NULL, NULL);
+		if (DotProduct(direction, trace->plane.normal) > -.35f)
+		{
+			VectorMA(direction, -.5f - DotProduct(direction, trace->plane.normal), trace->plane.normal, direction);
+			VectorNormalize(direction);
+			vectoangles(direction, targetAngles);
+			targetAngles[ROLL] = 12.f * cosf(DEG2RAD(flightAngles[PITCH]));
+		}
 		VectorMA(trace->endpos, -9.96f, direction, origin);
 		VectorMA(origin, -2.3f, trace->plane.normal, origin);
-		vectoangles(direction, targetAngles);
-		targetAngles[ROLL] = 0.f;
-		ent->s.apos.trType = TR_LINEAR_STOP;
-		ent->s.apos.trTime = level.time;
-		ent->s.apos.trDuration = 200;
-		VectorCopy(flightAngles, ent->s.apos.trBase);
-		for (i = 0; i < 3; i++)
-		{
-			ent->s.apos.trDelta[i] = 5.f * AngleSubtract(targetAngles[i], flightAngles[i]);
-		}
+		ent->s.apos.trType = TR_STATIONARY;
+		VectorCopy(targetAngles, ent->s.apos.trBase);
+		VectorClear(ent->s.apos.trDelta);
 		ent->s.eType = ET_GENERAL;
 		ent->s.weapon = WP_NONE;
 		ent->s.modelindex = G_ModelIndex("models/weapons2/knife_kbar/knife_throw.md3");
@@ -830,6 +833,7 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 				ent->pos1[i] = DotProduct(offset, axis[i]);
 				ent->pos2[i] = DotProduct(direction, axis[i]);
 			}
+			ent->pos3[0] = targetAngles[ROLL];
 			ent->enemy = other;
 			ent->think = G_BombasEmbeddedKnifeThink;
 			ent->nextthink = level.time + FRAMETIME;

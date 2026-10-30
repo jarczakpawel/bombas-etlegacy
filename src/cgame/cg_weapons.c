@@ -6500,22 +6500,23 @@ no_bubble_trail:
 					VectorMA(trace.endpos, 1.5f, trace.plane.normal, impact);
 					if (metal)
 					{
-						VectorScale(trace.plane.normal, 5.f, drift);
-						CG_SmokePuff(impact, drift, 5.f, 1.f, .78f, .3f, .7f, 180.f, cg.time, 0, 0, cgs.media.sparkParticleShader);
-						CG_AddSparks(impact, outgoing, 175, 220, incidence < .85f ? 2 : 1, .22f);
-						if (incidence < .85f && cgs.media.bombasRicochetSounds[variant])
+						if (incidence < .78f)
 						{
-							trap_S_StartSoundVControl(impact, -1, CHAN_AUTO, cgs.media.bombasRicochetSounds[variant], 115);
+							CG_AddSparks(impact, outgoing, 155, 145, 2, .12f);
+							if (cgs.media.bombasRicochetSounds[variant])
+							{
+								trap_S_StartSoundVControl(impact, -1, CHAN_AUTO, cgs.media.bombasRicochetSounds[variant], 92);
+							}
 						}
 					}
 					else
 					{
-						VectorScale(trace.plane.normal, 9.f, drift);
-						VectorMA(drift, 10.f, outgoing, drift);
-						CG_SmokePuff(impact, drift, 9.f, .68f, .64f, .57f, .68f, 300.f, cg.time, 0, 0, cgs.media.smokePuffShader);
-						if (incidence < .85f && cgs.media.sfx_brassSound[BRASSSOUND_STONE][variant % 3][0])
+						VectorScale(trace.plane.normal, 6.f, drift);
+						VectorMA(drift, 7.f, outgoing, drift);
+						CG_SmokePuff(impact, drift, 5.f, .58f, .55f, .5f, .34f, 180.f, cg.time, 0, 0, cgs.media.smokePuffShader);
+						if (incidence < .7f && cgs.media.sfx_brassSound[BRASSSOUND_STONE][variant % 3][0])
 						{
-							trap_S_StartSoundVControl(impact, -1, CHAN_AUTO, cgs.media.sfx_brassSound[BRASSSOUND_STONE][variant % 3][0], 100);
+							trap_S_StartSoundVControl(impact, -1, CHAN_AUTO, cgs.media.sfx_brassSound[BRASSSOUND_STONE][variant % 3][0], 65);
 						}
 					}
 					lastRicochetTime = cg.time;
