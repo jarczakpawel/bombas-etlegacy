@@ -349,7 +349,7 @@ qboolean G_SendScore_Add(gentity_t *ent, int i, char *buf, int bufsize)
 
 	if (cl->pers.connected == CON_CONNECTING)
 	{
-		ping = -1;
+		ping = cl->ps.ping == -2 ? -2 : -1;
 	}
 	else
 	{
@@ -4325,7 +4325,8 @@ qboolean G_BombasCanKickGrenade(gentity_t *player, gentity_t *missile)
         !missile || !missile->inuse || missile->s.eType != ET_MISSILE ||
         (missile->s.weapon != WP_GRENADE_LAUNCHER &&
          missile->s.weapon != WP_GRENADE_PINEAPPLE &&
-         missile->s.weapon != WP_SMOKE_MARKER) ||
+         missile->s.weapon != WP_SMOKE_MARKER &&
+         missile->s.weapon != WP_SMOKE_BOMB) ||
         (missile->classname && !Q_stricmp(missile->classname, "bombas_molotov")) ||
         missile->nextthink < level.time + 420 ||
         missile->nextthink > level.time + 5500)
@@ -4340,6 +4341,13 @@ qboolean G_BombasCanKickGrenade(gentity_t *player, gentity_t *missile)
         {
             return qfalse;
         }
+    }
+
+    if (missile->s.weapon == WP_SMOKE_BOMB &&
+        (!g_bombasSmokeKick.integer || (player->r.svFlags & SVF_BOT) ||
+         missile->think != weapon_smokeBombExplode || missile->grenadeExplodeTime))
+    {
+        return qfalse;
     }
 
     // Only ground-near grenades, not airborne grenades whizzing past heads.
@@ -4413,7 +4421,8 @@ static qboolean G_BombasKickNearestGrenade(gentity_t *player)
     *last = level.time;
     G_Printf("Bombas: %s %d kicked %s (entity %d, fuse remaining %dms)\n",
              (player->r.svFlags & SVF_BOT) ? "bot" : "player", id,
-             best->s.weapon == WP_SMOKE_MARKER ? "airstrike can" : "standard grenade",
+             best->s.weapon == WP_SMOKE_MARKER ? "airstrike can" :
+             best->s.weapon == WP_SMOKE_BOMB ? "smoke can" : "standard grenade",
              best->s.number, best->nextthink - level.time);
     return qtrue;
 }

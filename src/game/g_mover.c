@@ -95,6 +95,7 @@ const char *hintStrings[HINT_NUM_HINTS] =
 	"HINT_BAD_USER",
 	"HINT_COMPLETED",
 	"HINT_NO_DARM_FIRST_REVIVE",
+	"HINT_BOMBAS_KICK",
 };
 
 /*

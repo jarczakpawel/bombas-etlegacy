@@ -68,6 +68,7 @@ vmCvar_t cg_brassTime;
 vmCvar_t cg_letterbox;
 vmCvar_t cg_drawGun;
 vmCvar_t cg_bombasFireContact;
+vmCvar_t cg_bombasMissileCam;
 vmCvar_t cg_weapAnims;
 vmCvar_t cg_weapBankCollisions;
 vmCvar_t cg_weapSwitchNoAmmoSounds;
@@ -344,6 +345,7 @@ static cvarTable_t cvarTable[] =
 	{ &cg_autoswitch,                         "cg_autoswitch",                         "2",           CVAR_ARCHIVE,                 0 },
 	{ &cg_drawGun,                            "cg_drawGun",                            "1",           CVAR_ARCHIVE,                 0 },
 	{ &cg_bombasFireContact,                  "cg_bombasFireContact",                  "1",           CVAR_ARCHIVE,                 0 },
+	{ &cg_bombasMissileCam,                    "cg_bombasMissileCam",                    "1",           CVAR_ARCHIVE,                 0 },
 	{ &cg_weapAnims,                          "cg_weapAnims",                          "15",          CVAR_ARCHIVE,                 0 },
 	{ &cg_weapBankCollisions,                 "cg_weapBankCollisions",                 "0",           CVAR_ARCHIVE,                 0 },
 	{ &cg_weapSwitchNoAmmoSounds,             "cg_weapSwitchNoAmmoSounds",             "1",           CVAR_ARCHIVE,                 0 },

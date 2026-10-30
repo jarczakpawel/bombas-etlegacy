@@ -182,6 +182,9 @@ typedef enum eET_Weapons
 	ET_WP_MOUNTABLE_MG42,
 	// R87 only, explicit ID does not renumber existing Omni-Bot weapons.
 	ET_WP_BOMBAS_M1897 = 77,
+	ET_WP_BOMBAS_PPSH41 = 78,
+	ET_WP_BOMBAS_STG44 = 79,
+	ET_WP_BOMBAS_BAR = 80,
 
 	ET_WP_MAX = ET_WP_NONE + 128
 } ET_Weapon;

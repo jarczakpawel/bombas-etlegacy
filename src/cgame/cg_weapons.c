@@ -46,7 +46,7 @@ weapon_t weapBanksMultiPlayer[MAX_WEAP_BANKS_MP][MAX_WEAPS_IN_BANK_MP] =
 	{ 0,                   0,                    0,               0,               0,              0,                0,                      0,                       0,       0,      0,              0,                  0,         0,          0,          0,        0,     0       }, // empty bank '0'
 	{ WP_KNIFE,            WP_KNIFE_KABAR,       0,               0,               0,              0,                0,                      0,                       0,       0,      0,              0,                  0,         0,          0,          0,        0,     0       },
 	{ WP_LUGER,            WP_COLT,              WP_AKIMBO_COLT,  WP_AKIMBO_LUGER, WP_SILENCER,    WP_SILENCED_COLT, WP_AKIMBO_SILENCEDCOLT, WP_AKIMBO_SILENCEDLUGER, 0,       0,      0,              0,                  0,         0,          0,          0,        0,     0       },
-	{ WP_MP40,             WP_THOMPSON,          WP_STEN,         WP_GARAND,       WP_PANZERFAUST, WP_FLAMETHROWER,  WP_KAR98,               WP_CARBINE,              WP_FG42, WP_K43, WP_MOBILE_MG42, WP_MOBILE_BROWNING, WP_MORTAR, WP_MORTAR2, WP_BAZOOKA, WP_GPG40, WP_M7, WP_MP34, WP_BOMBAS_M1897 },
+	{ WP_MP40,             WP_THOMPSON,          WP_STEN,         WP_GARAND,       WP_PANZERFAUST, WP_FLAMETHROWER,  WP_KAR98,               WP_CARBINE,              WP_FG42, WP_K43, WP_MOBILE_MG42, WP_MOBILE_BROWNING, WP_MORTAR, WP_MORTAR2, WP_BAZOOKA, WP_GPG40, WP_M7, WP_MP34, WP_BOMBAS_M1897, WP_BOMBAS_PPSH41, WP_BOMBAS_STG44, WP_BOMBAS_BAR },
 	{ WP_GRENADE_LAUNCHER, WP_GRENADE_PINEAPPLE, 0,               0,               0,              0,                0,                      0,                       0,       0,      0,              0,                  0,         0,          0,          0,        0,     0       },
 	{ WP_MEDIC_SYRINGE,    WP_PLIERS,            WP_SMOKE_MARKER, WP_SMOKE_BOMB,   0,              0,                0,                      0,                       0,       0,      0,              0,                  0,         0,          0,          0,        0,     0       },
 	{ WP_DYNAMITE,         WP_MEDKIT,            WP_AMMO,         WP_SATCHEL,      WP_SATCHEL_DET, 0,                0,                      0,                       0,       0,      0,              0,                  0,         0,          0,          0,        0,     0       },
@@ -250,18 +250,18 @@ void CG_MachineGunEjectBrass(centity_t *cent)
 		velocity[0]          = -20 + 40 * crandom();  // more reasonable brass ballistics for a machinegun
 		velocity[1]          = -150 + 40 * crandom();
 		velocity[2]          = 100 + 50 * crandom();
-		re->hModel           = cgs.media.machinegunBrassModel;
+		re->hModel           = (cg_weapons[cent->currentState.weapon].brassModel ? cg_weapons[cent->currentState.weapon].brassModel : cgs.media.machinegunBrassModel);
 		le->angles.trBase[0] = 90;  //rand()&31; // belt-fed rounds should come out horizontal
 	}
 	else
 	{
 		if (GetWeaponTableData(cent->currentState.weapon)->type & (WEAPON_TYPE_MG | WEAPON_TYPE_RIFLE))
 		{
-			re->hModel = cgs.media.machinegunBrassModel;
+			re->hModel = (cg_weapons[cent->currentState.weapon].brassModel ? cg_weapons[cent->currentState.weapon].brassModel : cgs.media.machinegunBrassModel);
 		}
 		else
 		{
-			re->hModel = cgs.media.smallgunBrassModel;
+			re->hModel = (cg_weapons[cent->currentState.weapon].brassModel ? cg_weapons[cent->currentState.weapon].brassModel : cgs.media.smallgunBrassModel);
 		}
 
 		velocity[0] = -50 + 25 * crandom();
@@ -4517,6 +4517,15 @@ void CG_OutOfAmmoChange(qboolean allowForceSwitch)
 		return;
 	}
 
+	if (cg.predictedPlayerState.stats[STAT_PLAYER_CLASS] == PC_SOLDIER &&
+	    cg.weaponSelect != WP_BOMBAS_M1897 && CG_WeaponSelectable(WP_BOMBAS_M1897, qfalse) &&
+	    ((GetWeaponTableData(cg.weaponSelect)->type & WEAPON_TYPE_PANZER) ||
+	     !CG_WeaponSelectable(cg.weaponSelect, qfalse)))
+	{
+		CG_FinishWeaponChange(cg.predictedPlayerState.weapon, WP_BOMBAS_M1897);
+		return;
+	}
+
 	if (allowForceSwitch)
 	{
 		if ((cg.weaponSelect == WP_LANDMINE || cg.weaponSelect == WP_DYNAMITE) && CG_WeaponSelectable(WP_PLIERS, qfalse))
@@ -4787,7 +4796,11 @@ void CG_FireWeapon(centity_t *cent)
 			c = rand() % c;
 
 			firesound     = weap->flashSound.sounds[c];
-			fireEchosound = weap->flashEchoSound.sounds[c];
+			fireEchosound = (cent->currentState.weapon == WP_BOMBAS_PPSH41 ||
+			                 cent->currentState.weapon == WP_BOMBAS_STG44 ||
+			                 cent->currentState.weapon == WP_BOMBAS_BAR) && weap->flashEchoSound.count
+			             ? weap->flashEchoSound.sounds[rand() % weap->flashEchoSound.count]
+			             : weap->flashEchoSound.sounds[c];
 		}
 
 		// try to use the lastShotSound, but don't assume it's there.
@@ -4801,7 +4814,11 @@ void CG_FireWeapon(centity_t *cent)
 				c = rand() % c;
 
 				firesound     = weap->lastShotSound.sounds[c];
-				fireEchosound = weap->flashEchoSound.sounds[c];
+				fireEchosound = (cent->currentState.weapon == WP_BOMBAS_PPSH41 ||
+			                 cent->currentState.weapon == WP_BOMBAS_STG44 ||
+			                 cent->currentState.weapon == WP_BOMBAS_BAR) && weap->flashEchoSound.count
+			             ? weap->flashEchoSound.sounds[rand() % weap->flashEchoSound.count]
+			             : weap->flashEchoSound.sounds[c];
 			}
 		}
 
@@ -4822,7 +4839,16 @@ void CG_FireWeapon(centity_t *cent)
 				if (gdist > 512 && gdist < 4096)                       // temp dist.  TODO: use numbers that are weapon specific
 				{                   // use gorg as the new sound origin
 					VectorMA(cg.refdef_current->vieworg, 64, norm, gorg);                         // sound-on-a-stick
-					trap_S_StartSoundEx(gorg, cent->currentState.number, CHAN_WEAPON, fireEchosound, SND_NOCUT);
+					if (cent->currentState.weapon == WP_BOMBAS_PPSH41 ||
+					    cent->currentState.weapon == WP_BOMBAS_STG44 ||
+					    cent->currentState.weapon == WP_BOMBAS_BAR)
+					{
+						trap_S_StartSoundEx(gorg, cent->currentState.number, CHAN_ITEM, fireEchosound, 0);
+					}
+					else
+					{
+						trap_S_StartSoundEx(gorg, cent->currentState.number, CHAN_WEAPON, fireEchosound, SND_NOCUT);
+					}
 				}
 			}
 		}

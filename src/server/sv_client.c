@@ -2375,7 +2375,10 @@ static void SV_UserMove(client_t *cl, msg_t *msg, qboolean delta)
 	else
 	{
 		// save time for ping calculation
-		cl->frames[cl->messageAcknowledge & PACKET_MASK].messageAcked = svs.time;
+		if (cl->frames[cl->messageAcknowledge & PACKET_MASK].messageAcked < 0)
+		{
+			cl->frames[cl->messageAcknowledge & PACKET_MASK].messageAcked = svs.time;
+		}
 
 		if (!cl->frames[cl->messageAcknowledge & PACKET_MASK].parseEntities)
 		{

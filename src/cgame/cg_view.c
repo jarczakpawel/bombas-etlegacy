@@ -1863,7 +1863,7 @@ void CG_SetupFrustum(void)
 	VectorScale(cg.refdef_current->viewaxis[0], xs, frustum[1].normal);
 	VectorMA(frustum[1].normal, -xc, cg.refdef_current->viewaxis[1], frustum[1].normal);
 
-	ang = cg.refdef.fov_y / 180 * M_PI * 0.5;
+	ang = cg.refdef_current->fov_y / 180 * M_PI * 0.5;
 	xs  = sin(ang);
 	xc  = cos(ang);
 

@@ -1306,6 +1306,11 @@ static void SV_CalcPings(void)
 		if (cl->state != CS_ACTIVE)
 		{
 			cl->ping = 999;
+			if (cl->state >= CS_CONNECTED && cl->gentity)
+			{
+				ps       = SV_GameClientNum(i);
+				ps->ping = *cl->downloadName ? -2 : -1;
+			}
 			continue;
 		}
 		if (!cl->gentity)

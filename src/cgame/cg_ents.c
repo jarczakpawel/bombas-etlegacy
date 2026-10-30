@@ -1629,29 +1629,35 @@ static void CG_Missile(centity_t *cent)
 	if (s1->weapon == WP_SMOKE_BOMB)
 	{
 		// the smoke effect
-		CG_RenderSmokeGrenadeSmoke(cent, weapon);
+		if (!cg.bombasMissileCamPass)
+		{
+			CG_RenderSmokeGrenadeSmoke(cent, weapon);
+		}
 	}
-	else if (s1->weapon == WP_SATCHEL && s1->clientNum == cg.snap->ps.clientNum)
+	else if (!cg.bombasMissileCamPass && s1->weapon == WP_SATCHEL && s1->clientNum == cg.snap->ps.clientNum)
 	{
 		// use snap client number so that the detonator works right when spectating (#218)
 		cg.satchelCharge = cent;
 
 		CG_AddEntToCrosshairScanList(cent);
 	}
-	else if (s1->weapon == WP_ARTY && s1->otherEntityNum2 && s1->teamNum == cgs.clientinfo[cg.clientNum].team)
+	else if (!cg.bombasMissileCamPass && s1->weapon == WP_ARTY && s1->otherEntityNum2 && s1->teamNum == cgs.clientinfo[cg.clientNum].team)
 	{
 		VectorCopy(cent->lerpOrigin, cg.artilleryRequestPos[s1->clientNum]);
 		cg.artilleryRequestTime[s1->clientNum] = cg.time;
 	}
 
 	// add trails
-	if (cent->currentState.eType == ET_RAMJET)
+	if (!cg.bombasMissileCamPass)
 	{
-		CG_RocketTrail(cent);
-	}
-	else if (weapon->missileTrailFunc)
-	{
-		weapon->missileTrailFunc(cent);
+		if (cent->currentState.eType == ET_RAMJET)
+		{
+			CG_RocketTrail(cent);
+		}
+		else if (weapon->missileTrailFunc)
+		{
+			weapon->missileTrailFunc(cent);
+		}
 	}
 
 	// add dynamic light
@@ -1664,7 +1670,7 @@ static void CG_Missile(centity_t *cent)
 	// whoops, didn't mean to check it in with the missile flare
 
 	// add missile sound
-	if (weapon->missileSound)
+	if (!cg.bombasMissileCamPass && weapon->missileSound)
 	{
 		if (GetWeaponTableData(cent->currentState.weapon)->type & WEAPON_TYPE_RIFLENADE)
 		{
@@ -1693,7 +1699,7 @@ static void CG_Missile(centity_t *cent)
 	}
 
 	// Don't tick until armed
-	if (cent->currentState.weapon == WP_DYNAMITE)
+	if (!cg.bombasMissileCamPass && cent->currentState.weapon == WP_DYNAMITE)
 	{
 		if (cent->currentState.effect1Time)
 		{
@@ -1897,9 +1903,17 @@ static void CG_Missile(centity_t *cent)
 		}
 	}
 
-	if ((cgs.sv_cheats || cg.demoPlayback) && cent->currentState.clientNum == cg.predictedPlayerState.clientNum)
+	if (!cg.bombasMissileCamPass && s1->clientNum == cg.snap->ps.clientNum &&
+	    s1->pos.trType != TR_STATIONARY &&
+	    ((cgs.sv_cheats || cg.demoPlayback) ||
+	     (cg_bombasMissileCam.integer && cg.snap->ps.pm_type == PM_NORMAL &&
+	      !(cg.snap->ps.pm_flags & PMF_FOLLOW) &&
+	      (s1->weapon == WP_PANZERFAUST || s1->weapon == WP_BAZOOKA ||
+	       s1->weapon == WP_MORTAR_SET || s1->weapon == WP_MORTAR2_SET ||
+	       s1->weapon == WP_MORTAR || s1->weapon == WP_MORTAR2 ||
+	       s1->weapon == WP_M7 || s1->weapon == WP_GPG40))))
 	{
-		if (cent->currentState.pos.trType != TR_STATIONARY)
+		if (!cg.latestMissile || cg.latestMissile->currentState.pos.trTime <= s1->pos.trTime)
 		{
 			cg.latestMissile = cent;
 		}
@@ -3560,7 +3574,10 @@ void CG_AddPacketEntities(void)
 {
 	int num;
 
-	cg.latestMissile = NULL;
+	if (!cg.bombasMissileCamPass)
+	{
+		cg.latestMissile = NULL;
+	}
 
 	// set cg.frameInterpolation
 	if (cg.nextSnap)
@@ -3606,7 +3623,10 @@ void CG_AddPacketEntities(void)
 	// lerp the non-predicted value for lightning gun origins
 	CG_CalcEntityLerpPositions(&cg_entities[cg.snap->ps.clientNum]);
 
-	cg.satchelCharge = NULL;
+	if (!cg.bombasMissileCamPass)
+	{
+		cg.satchelCharge = NULL;
+	}
 
 	// changing to a single loop, child will request that their parents are added first anyway
 	for (num = 0; num < cg.snap->numEntities ; num++)
@@ -3624,7 +3644,10 @@ void CG_AddPacketEntities(void)
 	}
 
 	// add the flamethrower sounds
-	CG_UpdateFlamethrowerSounds();
+	if (!cg.bombasMissileCamPass)
+	{
+		CG_UpdateFlamethrowerSounds();
+	}
 }
 
 /**
