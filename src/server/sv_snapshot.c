@@ -1084,7 +1084,7 @@ void SV_SendMessageToClient(msg_t *msg, client_t *client, qboolean parseEntities
 {
 	// record information about the message
 	client->frames[client->netchan.outgoingSequence & PACKET_MASK].messageSize   = msg->cursize;
-	client->frames[client->netchan.outgoingSequence & PACKET_MASK].messageSent   = svs.time;
+	client->frames[client->netchan.outgoingSequence & PACKET_MASK].messageSent   = Sys_Microseconds();
 	client->frames[client->netchan.outgoingSequence & PACKET_MASK].messageAcked  = -1;
 	client->frames[client->netchan.outgoingSequence & PACKET_MASK].parseEntities = parseEntities;
 

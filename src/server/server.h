@@ -170,8 +170,8 @@ typedef struct
 	int first_entity;                   ///< into the circular sv_packet_entities[]
 	                                    ///< the entities MUST be in increasing state number
 	                                    ///< order, otherwise the delta compression will fail
-	int messageSent;                    ///< time the message was transmitted
-	int messageAcked;                   ///< time the message was acked
+	int64_t messageSent;                ///< time the message was transmitted
+	int64_t messageAcked;               ///< time the message was acked
 	int messageSize;                    ///< used to rate drop packets
 	qboolean parseEntities;             ///< does the frame contains parse entities?
 } clientSnapshot_t;

@@ -1342,7 +1342,11 @@ static void SV_CalcPings(void)
 			{
 				continue;
 			}
-			delta = cl->frames[j].messageAcked - cl->frames[j].messageSent;
+			delta = (int)((cl->frames[j].messageAcked - cl->frames[j].messageSent) / 1000);
+			if (delta < 0 || delta > 999)
+			{
+				continue;
+			}
 			count++;
 			total += delta;
 		}
