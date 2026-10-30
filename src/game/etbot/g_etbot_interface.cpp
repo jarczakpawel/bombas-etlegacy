@@ -744,6 +744,11 @@ static void BombasBotRarePoison(gentity_t *bot, usercmd_t &cmd)
         state = {};
     }
     state.lastTime = now;
+    if (bombasBotThrow[id].state != 0)
+    {
+        state.started = 0;
+        return;
+    }
     if (g_poison.integer <= 0 || level.match_pause != PAUSE_NONE ||
         bot->client->sess.playerType != PC_MEDIC || bot->health <= 0 ||
         bot->client->ps.pm_type != PM_NORMAL ||

@@ -4517,6 +4517,15 @@ void CG_OutOfAmmoChange(qboolean allowForceSwitch)
 		return;
 	}
 
+	if (cg.predictedPlayerState.stats[STAT_PLAYER_CLASS] == PC_SOLDIER &&
+	    cg.weaponSelect != WP_BOMBAS_M1897 && CG_WeaponSelectable(WP_BOMBAS_M1897, qfalse) &&
+	    ((GetWeaponTableData(cg.weaponSelect)->type & WEAPON_TYPE_PANZER) ||
+	     !CG_WeaponSelectable(cg.weaponSelect, qfalse)))
+	{
+		CG_FinishWeaponChange(cg.predictedPlayerState.weapon, WP_BOMBAS_M1897);
+		return;
+	}
+
 	if (allowForceSwitch)
 	{
 		if ((cg.weaponSelect == WP_LANDMINE || cg.weaponSelect == WP_DYNAMITE) && CG_WeaponSelectable(WP_PLIERS, qfalse))
