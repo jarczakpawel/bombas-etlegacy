@@ -6510,7 +6510,8 @@ no_bubble_trail:
 					}
 					else
 					{
-						VectorMA(trace.plane.normal, 9.f, outgoing, 10.f, drift);
+						VectorScale(trace.plane.normal, 9.f, drift);
+						VectorMA(drift, 10.f, outgoing, drift);
 						CG_SmokePuff(impact, drift, 9.f, .68f, .64f, .57f, .68f, 300.f, cg.time, 0, 0, cgs.media.smokePuffShader);
 						if (incidence < .85f && cgs.media.sfx_brassSound[BRASSSOUND_STONE][variant % 3][0])
 						{

@@ -769,7 +769,27 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 	    !(trace->surfaceFlags & SURF_SKY) && !other->client)
 	{
 		vec3_t origin, direction, flightAngles, targetAngles;
-		int i;
+		gentity_t *oldest = NULL;
+		int i, embedded = 0;
+		for (i = level.maxclients; i < level.num_entities; i++)
+		{
+			gentity_t *knife = &g_entities[i];
+			if (knife == ent || !knife->inuse || knife->s.eType != ET_GENERAL ||
+			    knife->r.ownerNum != ent->r.ownerNum || !knife->classname ||
+			    Q_stricmp(knife->classname, "bombas_throwing_knife"))
+			{
+				continue;
+			}
+			embedded++;
+			if (!oldest || knife->timestamp < oldest->timestamp)
+			{
+				oldest = knife;
+			}
+		}
+		if (embedded >= 6 && oldest)
+		{
+			G_FreeEntity(oldest);
+		}
 		BG_EvaluateTrajectory(&ent->s.apos, level.time, flightAngles, qtrue, ent->s.effect2Time);
 		BG_EvaluateTrajectoryDelta(&ent->s.pos, level.time, direction, qfalse, ent->s.effect2Time);
 		if (VectorNormalize(direction) < .001f)
@@ -796,7 +816,8 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 		ent->r.contents = 0;
 		ent->clipmask = 0;
 		ent->think = G_FreeEntity;
-		ent->nextthink = level.time + 20000;
+		ent->timestamp = level.time + 20000;
+		ent->nextthink = ent->timestamp;
 		G_SetOrigin(ent, origin);
 		if (trace->entityNum != ENTITYNUM_WORLD && other->inuse && other->s.eType == ET_MOVER)
 		{
@@ -810,7 +831,6 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 				ent->pos2[i] = DotProduct(direction, axis[i]);
 			}
 			ent->enemy = other;
-			ent->timestamp = level.time + 20000;
 			ent->think = G_BombasEmbeddedKnifeThink;
 			ent->nextthink = level.time + FRAMETIME;
 		}
