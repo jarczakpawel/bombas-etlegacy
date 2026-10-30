@@ -1597,6 +1597,7 @@ typedef struct
 
 	// jaquboss - MORTARCAM
 	centity_t *latestMissile;
+	qboolean bombasMissileCamPass;
 
 #ifdef FEATURE_RATING
 	// skill rating

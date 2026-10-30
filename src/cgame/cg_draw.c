@@ -4918,7 +4918,9 @@ void CG_DrawMissileCamera(hudComponent_t *comp)
 
 	if (!cg.hyperspace)
 	{
+		cg.bombasMissileCamPass = qtrue;
 		CG_AddPacketEntities();
+		cg.bombasMissileCamPass = qfalse;
 		CG_AddMarks();
 		CG_AddParticles();
 		CG_AddLocalEntities(qfalse);
