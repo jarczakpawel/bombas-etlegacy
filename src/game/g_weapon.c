@@ -58,6 +58,95 @@ KNIFE
  * @brief Weapon_Knife
  * @param[in] ent
  */
+static int bombasKnifeSpawnCount[MAX_CLIENTS];
+static int bombasKnifeConnectTime[MAX_CLIENTS];
+static int bombasKnifeShots[MAX_CLIENTS];
+static int bombasKnifeLastShot[MAX_CLIENTS];
+static qboolean bombasKnifeKnown[MAX_CLIENTS];
+
+void G_BombasThrowKnife(gentity_t *ent)
+{
+    int id;
+    gentity_t *bolt;
+    vec3_t direction, start, eye, velocity;
+    trace_t tr;
+    int currentWeapon;
+
+    if (!ent || !ent->inuse || !ent->client || !g_bombasThrowingKnives.integer ||
+        (ent->r.svFlags & SVF_BOT) || ent->client->pers.connected != CON_CONNECTED ||
+        ent->health <= 0 || ent->client->ps.pm_type != PM_NORMAL ||
+        (ent->client->ps.pm_flags & PMF_LIMBO) ||
+        ent->client->sess.sessionTeam == TEAM_SPECTATOR ||
+        BG_PlayerMounted(ent->client->ps.eFlags) ||
+        (ent->client->pers.cmd.buttons & BUTTON_TALK))
+    {
+        return;
+    }
+    id = ent->s.number;
+    if (id < 0 || id >= level.maxclients)
+    {
+        return;
+    }
+    currentWeapon = ent->client->ps.weapon;
+    if (currentWeapon != WP_KNIFE && currentWeapon != WP_KNIFE_KABAR)
+    {
+        return;
+    }
+    if (!bombasKnifeKnown[id] || bombasKnifeSpawnCount[id] != ent->client->ps.persistant[PERS_SPAWN_COUNT] ||
+        bombasKnifeConnectTime[id] != ent->client->pers.connectTime)
+    {
+        bombasKnifeKnown[id] = qtrue;
+        bombasKnifeSpawnCount[id] = ent->client->ps.persistant[PERS_SPAWN_COUNT];
+        bombasKnifeConnectTime[id] = ent->client->pers.connectTime;
+        bombasKnifeShots[id] = 0;
+        bombasKnifeLastShot[id] = -100000;
+    }
+    if (bombasKnifeShots[id] >= 3 || level.time - bombasKnifeLastShot[id] < 850)
+    {
+        return;
+    }
+    AngleVectors(ent->client->ps.viewangles, direction, NULL, NULL);
+    VectorCopy(ent->client->ps.origin, eye);
+    eye[2] += ent->client->ps.viewheight;
+    VectorMA(eye, 24.f, direction, start);
+    trap_Trace(&tr, eye, NULL, NULL, start, ent->s.number, MASK_SHOT);
+    if (tr.startsolid || tr.allsolid || tr.fraction < 1.f)
+    {
+        return;
+    }
+
+    bolt = G_Spawn();
+    bolt->classname = "bombas_throwing_knife";
+    bolt->s.eType = ET_MISSILE;
+    bolt->s.weapon = currentWeapon;
+    bolt->r.ownerNum = ent->s.number;
+    bolt->parent = ent;
+    bolt->s.clientNum = ent->s.number;
+    bolt->s.teamNum = ent->client->sess.sessionTeam;
+    bolt->damage = 38;
+    bolt->methodOfDeath = GetWeaponTableData(currentWeapon)->mod;
+    bolt->clipmask = MASK_MISSILESHOT;
+    bolt->s.pos.trType = TR_GRAVITY;
+    bolt->s.pos.trTime = level.time;
+    VectorCopy(start, bolt->s.pos.trBase);
+    VectorScale(direction, 1050.f, velocity);
+    VectorMA(velocity, .32f, ent->client->ps.velocity, velocity);
+    VectorCopy(velocity, bolt->s.pos.trDelta);
+    SnapVector(bolt->s.pos.trDelta);
+    bolt->s.apos.trType = TR_LINEAR;
+    bolt->s.apos.trTime = level.time;
+    vectoangles(direction, bolt->s.apos.trBase);
+    VectorSet(bolt->s.apos.trDelta, 820.f, 0.f, 0.f);
+    bolt->think = G_FreeEntity;
+    bolt->nextthink = level.time + 2700;
+    VectorCopy(start, bolt->r.currentOrigin);
+    trap_LinkEntity(bolt);
+
+    bombasKnifeShots[id]++;
+    bombasKnifeLastShot[id] = level.time;
+    G_LogPrintf("Bombas_ThrowKnife: %d %d %d\n", id, bolt->s.number, bombasKnifeShots[id]);
+}
+
 gentity_t *Weapon_Knife(gentity_t *ent)
 {
 	trace_t        tr;

@@ -3493,6 +3493,13 @@ void CG_AltWeapon_f(void)
 		return;
 	}
 
+	if ((cg.weaponSelect == WP_KNIFE || cg.weaponSelect == WP_KNIFE_KABAR) &&
+	    cg.predictedPlayerState.weapon == cg.weaponSelect)
+	{
+		trap_SendClientCommand("bombas_throwknife");
+		return;
+	}
+
 	if (cg.weaponSelect == WP_BINOCULARS)
 	{
 		/*if(cg.snap->ps.eFlags & EF_ZOOMING) {

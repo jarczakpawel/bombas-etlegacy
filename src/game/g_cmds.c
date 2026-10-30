@@ -5483,6 +5483,12 @@ void ClientCommand(int clientNum)
 	}
 #endif
 
+	if (!Q_stricmp(cmd, "bombas_throwknife"))
+	{
+		G_BombasThrowKnife(ent);
+		return;
+	}
+
 	if (G_commandCheck(ent, cmd))
 	{
 		return;

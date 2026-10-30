@@ -1835,6 +1835,11 @@ void CG_RegisterWeapon(int weaponNum, qboolean force)
 			CG_Printf(S_COLOR_RED "WARNING: trying to register weapon %i but there is no weapon file entry for it.\n", weaponNum);
 		}
 	}
+	if (weaponNum == WP_KNIFE || weaponNum == WP_KNIFE_KABAR)
+	{
+		weaponInfo->missileModel = trap_R_RegisterModel("models/weapons2/knife_kbar/knife_throw.md3");
+	}
+
 }
 
 /**
