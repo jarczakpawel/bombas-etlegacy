@@ -1598,6 +1598,14 @@ static qboolean CG_RW_ParseClient(int handle, weaponInfo_t *weaponInfo)
 				return CG_RW_ParseError(handle, "expected missileDlightColor as r g b");
 			}
 		}
+		else if (!Q_stricmp(token.string, "brassModel"))
+		{
+			if (!PC_String_ParseNoAlloc(handle, filename, sizeof(filename)))
+			{
+				return CG_RW_ParseError(handle, "expected brassModel filename");
+			}
+			weaponInfo->brassModel = trap_R_RegisterModel(filename);
+		}
 		else if (!Q_stricmp(token.string, "ejectBrassFunc"))
 		{
 			if (!PC_String_ParseNoAlloc(handle, filename, sizeof(filename)))

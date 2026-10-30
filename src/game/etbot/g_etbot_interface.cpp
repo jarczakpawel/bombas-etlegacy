@@ -1265,6 +1265,12 @@ static weapon_t _weaponBotToGame(int weapon)
 		return WP_MP40;
 	case ET_WP_BOMBAS_M1897:
 		return WP_BOMBAS_M1897;
+	case ET_WP_BOMBAS_PPSH41:
+		return WP_BOMBAS_PPSH41;
+	case ET_WP_BOMBAS_STG44:
+		return WP_BOMBAS_STG44;
+	case ET_WP_BOMBAS_BAR:
+		return WP_BOMBAS_BAR;
 	case ET_WP_PANZERFAUST:
 		return WP_PANZERFAUST;
 	case ET_WP_PLIERS:
@@ -1374,6 +1380,12 @@ int Bot_WeaponGameToBot(int weapon)
 		return ET_WP_MP40;
 	case WP_BOMBAS_M1897:
 		return ET_WP_BOMBAS_M1897;
+	case WP_BOMBAS_PPSH41:
+		return ET_WP_BOMBAS_PPSH41;
+	case WP_BOMBAS_STG44:
+		return ET_WP_BOMBAS_STG44;
+	case WP_BOMBAS_BAR:
+		return ET_WP_BOMBAS_BAR;
 	case WP_PANZERFAUST:
 		return ET_WP_PANZERFAUST;
 	case WP_PLIERS:
@@ -1567,7 +1579,7 @@ static int _choosePriWeap(gentity_t *bot, int playerClass, int team)
 					ET_WP_FLAMETHROWER,
 					ET_WP_MORTAR,
 					ET_WP_THOMPSON,
-					ET_WP_BOMBAS_M1897  // R87: 1/6 Soldier spawns, native bot aim/reload
+					ET_WP_BOMBAS_BAR
 				};
 				int rInt = rand() % (sizeof(wpns) / sizeof(wpns[0]));
 				iSelected = wpns[rInt];
@@ -1583,7 +1595,7 @@ static int _choosePriWeap(gentity_t *bot, int playerClass, int team)
 					//92 // MORTAR2
 					ET_WP_MORTAR,
 					ET_WP_MP40,
-					ET_WP_BOMBAS_M1897  // R87: same odds for Axis Soldier
+					ET_WP_BOMBAS_STG44
 				};
 				int rInt = rand() % (sizeof(wpns) / sizeof(wpns[0]));
 				iSelected = wpns[rInt];
@@ -1598,6 +1610,7 @@ static int _choosePriWeap(gentity_t *bot, int playerClass, int team)
 				{
 					// add shit as needed
 					ET_WP_THOMPSON,
+					ET_WP_BOMBAS_PPSH41,
 				};
 				int rInt = rand() % (sizeof(wpns) / sizeof(wpns[0]));
 				iSelected = wpns[rInt];
@@ -1609,6 +1622,7 @@ static int _choosePriWeap(gentity_t *bot, int playerClass, int team)
 				{
 					// add shit as needed
 					ET_WP_MP40,
+					ET_WP_BOMBAS_PPSH41,
 				};
 				int rInt = rand() % (sizeof(wpns) / sizeof(wpns[0]));
 				iSelected = wpns[rInt];
@@ -1624,6 +1638,7 @@ static int _choosePriWeap(gentity_t *bot, int playerClass, int team)
 					// add shit as needed
 					ET_WP_THOMPSON,
 					ET_WP_CARBINE,
+					ET_WP_BOMBAS_PPSH41,
 				};
 				int rInt = rand() % (sizeof(wpns) / sizeof(wpns[0]));
 				iSelected = wpns[rInt];
@@ -1636,6 +1651,7 @@ static int _choosePriWeap(gentity_t *bot, int playerClass, int team)
 					// add shit as needed
 					ET_WP_MP40,
 					ET_WP_KAR98,
+					ET_WP_BOMBAS_PPSH41,
 				};
 				int rInt = rand() % (sizeof(wpns) / sizeof(wpns[0]));
 				iSelected = wpns[rInt];
@@ -1650,6 +1666,7 @@ static int _choosePriWeap(gentity_t *bot, int playerClass, int team)
 				{
 					// add shit as needed
 					ET_WP_THOMPSON,
+					ET_WP_BOMBAS_PPSH41,
 				};
 				int rInt = rand() % (sizeof(wpns) / sizeof(wpns[0]));
 				iSelected = wpns[rInt];
@@ -1661,6 +1678,7 @@ static int _choosePriWeap(gentity_t *bot, int playerClass, int team)
 				{
 					// add shit as needed
 					ET_WP_MP40,
+					ET_WP_BOMBAS_PPSH41,
 				};
 				int rInt = rand() % (sizeof(wpns) / sizeof(wpns[0]));
 				iSelected = wpns[rInt];
@@ -1676,7 +1694,8 @@ static int _choosePriWeap(gentity_t *bot, int playerClass, int team)
 					// add shit as needed
 					ET_WP_STEN,
 					ET_WP_FG42,
-					ET_WP_GARAND
+					ET_WP_GARAND,
+					ET_WP_BOMBAS_BAR
 				};
 				int rInt = rand() % (sizeof(wpns) / sizeof(wpns[0]));
 				iSelected = wpns[rInt];
@@ -1689,7 +1708,8 @@ static int _choosePriWeap(gentity_t *bot, int playerClass, int team)
 					// add shit as needed
 					91,
 					ET_WP_FG42,
-					ET_WP_K43
+					ET_WP_K43,
+					ET_WP_BOMBAS_STG44
 				};
 				int rInt = rand() % (sizeof(wpns) / sizeof(wpns[0]));
 				iSelected = wpns[rInt];
