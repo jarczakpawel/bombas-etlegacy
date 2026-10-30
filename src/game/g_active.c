@@ -1749,11 +1749,15 @@ void G_RunClient(gentity_t *ent)
 	{
 		if (ent->client->pers.cmd.buttons & BUTTON_ACTIVATE)
 		{
-			Cmd_Activate2_f(ent);
+			if (!G_BombasCorpseDrag(ent))
+			{
+				Cmd_Activate2_f(ent);
+			}
 			ent->client->activateHeld = qtrue;
 		}
 		else
 		{
+			(void)G_BombasCorpseDrag(ent);
 			ent->client->activateHeld = qfalse;
 		}
 	}

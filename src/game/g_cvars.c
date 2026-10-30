@@ -69,6 +69,7 @@ vmCvar_t g_poison;
 vmCvar_t g_goomba;
 vmCvar_t g_bombasAdrenaline;
 vmCvar_t g_bombasAdrenalineShare;
+vmCvar_t g_bombasCorpseDrag;
 vmCvar_t g_cheats;
 vmCvar_t g_knockback;
 
@@ -456,6 +457,7 @@ cvarTable_t gameCvarTable[] =
 	{ &g_goomba,                          "g_goomba",                          "4",                          CVAR_ARCHIVE,                                    0, qtrue,  qfalse },
 	{ &g_bombasAdrenaline,                "g_bombasAdrenaline",                "1",                          CVAR_ARCHIVE,                                    0, qtrue,  qfalse },
 	{ &g_bombasAdrenalineShare,           "g_bombasAdrenalineShare",           "1",                          CVAR_ARCHIVE,                                    0, qtrue,  qfalse },
+	{ &g_bombasCorpseDrag,               "g_bombasCorpseDrag",               "0",                          CVAR_ARCHIVE,                                    0, qtrue,  qfalse },
 	{ &g_knockback,                       "g_knockback",                       "1000",                       0,                                               0, qtrue,  qtrue  },
 
 	{ &g_needpass,                        "g_needpass",                        "0",                          CVAR_SERVERINFO | CVAR_ROM,                      0, qtrue,  qfalse },
