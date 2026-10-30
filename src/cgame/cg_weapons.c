@@ -6338,7 +6338,7 @@ void CG_Bullet(int weapon, vec3_t end, int sourceEntityNum, int targetEntityNum)
 			    !(cg.snap->ps.pm_flags & PMF_LIMBO) &&
 			    sourceEntityNum != cg.snap->ps.clientNum &&
 			    targetEntityNum != cg.snap->ps.clientNum &&
-			    cg.time - whizzLastTime >= 180)
+			    cg.time - whizzLastTime >= 300)
 			{
 				vec3_t segment, ear, nearest;
 				float lengthSquared, projection, distanceSquared;
@@ -6353,7 +6353,7 @@ void CG_Bullet(int weapon, vec3_t end, int sourceEntityNum, int targetEntityNum)
 						trace_t path = { 0 };
 						VectorMA(start, projection, segment, nearest);
 						distanceSquared = DistanceSquared(nearest, cg.refdef.vieworg);
-						if (distanceSquared > 14.f * 14.f && distanceSquared < 112.f * 112.f &&
+						if (distanceSquared > 14.f * 14.f && distanceSquared < 104.f * 104.f &&
 						    DistanceSquared(start, nearest) > 42.f * 42.f &&
 						    DistanceSquared(end, nearest) > 42.f * 42.f)
 						{
@@ -6368,7 +6368,7 @@ void CG_Bullet(int weapon, vec3_t end, int sourceEntityNum, int targetEntityNum)
 								whizzSounds[near][variant] = trap_S_RegisterSound(
 								    va("sound/bombas/bullet_%s_%d.wav", near ? "near" : "far", variant + 1), qfalse);
 							}
-							if (whizzSounds[near][variant])
+							if (whizzSounds[near][variant] && (near || cg.time - whizzLastTime >= 500))
 							{
 								trap_S_StartSound(nearest, -1, CHAN_AUTO, whizzSounds[near][variant]);
 								whizzLastTime = cg.time;

@@ -765,7 +765,7 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 	{
 		vec3_t origin, direction;
 		VectorScale(trace->plane.normal, -1.f, direction);
-		VectorMA(trace->endpos, -3.f, trace->plane.normal, origin);
+		VectorMA(trace->endpos, 9.f, trace->plane.normal, origin);
 		ent->s.eType = ET_GENERAL;
 		ent->s.weapon = WP_NONE;
 		ent->s.modelindex = G_ModelIndex("models/weapons2/knife_kbar/knife_throw.md3");
