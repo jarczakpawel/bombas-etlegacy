@@ -673,6 +673,27 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 		return;
 	}
 
+	if (ent->classname && !Q_stricmp(ent->classname, "bombas_throwing_knife") &&
+	    trace->entityNum == ENTITYNUM_WORLD && !(trace->surfaceFlags & (SURF_SKY | SURF_NOIMPACT)))
+	{
+		vec3_t origin, direction;
+		VectorScale(trace->plane.normal, -1.f, direction);
+		VectorMA(trace->endpos, -3.f, trace->plane.normal, origin);
+		ent->s.eType = ET_GENERAL;
+		ent->s.weapon = WP_NONE;
+		ent->s.modelindex = G_ModelIndex("models/weapons2/knife_kbar/knife_throw.md3");
+		ent->s.apos.trType = TR_STATIONARY;
+		vectoangles(direction, ent->s.apos.trBase);
+		ent->s.pos.trType = TR_STATIONARY;
+		ent->r.contents = 0;
+		ent->clipmask = 0;
+		ent->think = G_FreeEntity;
+		ent->nextthink = level.time + 1600;
+		G_SetOrigin(ent, origin);
+		trap_LinkEntity(ent);
+		return;
+	}
+
 	// handle func_explosives
 	if (other->classname && Q_stricmp(other->classname, "func_explosive") == 0)
 	{

@@ -436,6 +436,11 @@ void G_DropWeapon(gentity_t *ent, weapon_t weapon)
  */
 qboolean G_CanPickupWeapon(weapon_t weapon, gentity_t *ent)
 {
+	if (g_bombasMode.integer == 1 || g_bombasMode.integer == 3)
+	{
+		return qfalse;
+	}
+
 	// prevent picking up while reloading
 	if (ent->client->ps.weaponstate == WEAPON_RELOADING)
 	{
@@ -474,7 +479,7 @@ int Pickup_Weapon(gentity_t *ent, gentity_t *other)
 	int      quantity;
 	qboolean alreadyHave = qfalse;
 
-	if (g_bombasMode.integer == 1 && ent->item->giWeapon != WP_AMMO)
+	if ((g_bombasMode.integer == 1 || g_bombasMode.integer == 3) && ent->item->giWeapon != WP_AMMO)
 	{
 		return 0;
 	}

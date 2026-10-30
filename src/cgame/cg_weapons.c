@@ -72,6 +72,12 @@ static char *weapAnimNumberStr[] =
 	"DROP2",
 };
 
+static int bombasKnifeHeldKey = -1;
+static int bombasKnifeWindupTime;
+static int bombasKnifeReleaseTime = -100000;
+static int bombasKnifeLastShotTime = -100000;
+static int bombasKnifeLastUpdateTime;
+
 static vec3_t forward, right, up;
 
 static void CG_Translate(refEntity_t *ref, float trnsl1, float trnsl2, float trnsl3)
@@ -1875,6 +1881,11 @@ void CG_AddPlayerWeapon(refEntity_t *parent, playerState_t *ps, centity_t *cent)
 
 		for (i = W_PART_1; i < W_MAX_PARTS; i++)
 		{
+			if ((weaponNum == WP_KNIFE || weaponNum == WP_KNIFE_KABAR) &&
+			    cg.time >= bombasKnifeReleaseTime && cg.time - bombasKnifeReleaseTime < 240)
+			{
+				continue;
+			}
 			if (CHECKBITWISE(GetWeaponTableData(weaponNum)->type, WEAPON_TYPE_MORTAR | WEAPON_TYPE_SET) && (i == W_PART_4 || i == W_PART_5))
 			{
 				if (ps && !cg.renderingThirdPerson && cg.predictedPlayerState.weaponstate != WEAPON_RAISING)
@@ -2943,6 +2954,38 @@ void CG_AddViewWeapon(playerState_t *ps)
 			gunoff[2] -= offset;
 		}
 
+		if (ps->weapon == WP_KNIFE || ps->weapon == WP_KNIFE_KABAR)
+		{
+			if (bombasKnifeHeldKey >= 0)
+			{
+				float windup = Com_Clamp(0.f, 1.f, (cg.time - bombasKnifeWindupTime) / 240.f);
+				gunoff[0] -= 16.f * windup;
+				gunoff[1] += 5.f * windup;
+				gunoff[2] += 3.f * windup;
+				angles[PITCH] -= 30.f * windup;
+				angles[ROLL] += 12.f * windup;
+			}
+			else if (cg.time >= bombasKnifeReleaseTime && cg.time - bombasKnifeReleaseTime < 400)
+			{
+				int elapsed = cg.time - bombasKnifeReleaseTime;
+				if (elapsed < 100)
+				{
+					float release = 1.f - elapsed / 100.f;
+					gunoff[0] -= 16.f * release;
+					gunoff[1] += 5.f * release;
+					angles[PITCH] -= 30.f * release;
+				}
+				else if (elapsed < 210)
+				{
+					gunoff[2] -= 28.f * (elapsed - 100) / 110.f;
+				}
+				else
+				{
+					gunoff[2] -= 28.f * (400 - elapsed) / 190.f;
+				}
+			}
+		}
+
 		VectorMA(hand->origin, gunoff[0], cg.refdef_current->viewaxis[0], hand->origin);
 		VectorMA(hand->origin, gunoff[1], cg.refdef_current->viewaxis[1], hand->origin);
 		VectorMA(hand->origin, (gunoff[2] + fovOffset), cg.refdef_current->viewaxis[2], hand->origin);
@@ -3462,6 +3505,37 @@ void CG_FinishWeaponChange(int lastWeapon, int newWeapon)
 
 extern pmove_t cg_pmove;
 
+void CG_BombasKnifeUpdate(void)
+{
+	if (cg.time < bombasKnifeLastUpdateTime)
+	{
+		bombasKnifeHeldKey = -1;
+		bombasKnifeReleaseTime = -100000;
+		bombasKnifeLastShotTime = -100000;
+	}
+	bombasKnifeLastUpdateTime = cg.time;
+	if (bombasKnifeHeldKey < 0)
+	{
+		return;
+	}
+	if (!cg.snap || cg.demoPlayback ||
+	    (cg.predictedPlayerState.weapon != WP_KNIFE && cg.predictedPlayerState.weapon != WP_KNIFE_KABAR) ||
+	    cg.predictedPlayerState.pm_type != PM_NORMAL ||
+	    (cg.predictedPlayerState.pm_flags & PMF_LIMBO) ||
+	    BG_PlayerMounted(cg.predictedPlayerState.eFlags))
+	{
+		bombasKnifeHeldKey = -1;
+		return;
+	}
+	if (!trap_Key_IsDown(bombasKnifeHeldKey))
+	{
+		bombasKnifeHeldKey = -1;
+		bombasKnifeReleaseTime = cg.time;
+		bombasKnifeLastShotTime = cg.time;
+		trap_SendClientCommand("bombas_throwknife");
+	}
+}
+
 /**
  * @brief For example, switching between WP_MAUSER and WP_SNIPERRIFLE
  */
@@ -3514,6 +3588,39 @@ void CG_AltWeapon_f(void)
 	if ((cg.weaponSelect == WP_KNIFE || cg.weaponSelect == WP_KNIFE_KABAR) &&
 	    cg.predictedPlayerState.weapon == cg.weaponSelect)
 	{
+		int key;
+		char binding[128];
+		if (bombasKnifeHeldKey >= 0 || cg.time - bombasKnifeLastShotTime < 850 ||
+		    (cg.bombasKnivesHudEnabled && cg.bombasKnivesSpawnCount == cg.snap->ps.persistant[PERS_SPAWN_COUNT] && cg.bombasKnivesRemaining <= 0))
+		{
+			return;
+		}
+		if (trap_Key_IsDown(K_MOUSE2))
+		{
+			trap_Key_GetBindingBuf(K_MOUSE2, binding, sizeof(binding));
+			if (!Q_stricmp(binding, "weapalt"))
+			{
+				bombasKnifeHeldKey = K_MOUSE2;
+				bombasKnifeWindupTime = cg.time;
+				return;
+			}
+		}
+		for (key = 0; key < MAX_KEYS; key++)
+		{
+			if (key == K_MOUSE2 || !trap_Key_IsDown(key))
+			{
+				continue;
+			}
+			trap_Key_GetBindingBuf(key, binding, sizeof(binding));
+			if (!Q_stricmp(binding, "weapalt"))
+			{
+				bombasKnifeHeldKey = key;
+				bombasKnifeWindupTime = cg.time;
+				return;
+			}
+		}
+		bombasKnifeReleaseTime = cg.time;
+		bombasKnifeLastShotTime = cg.time;
 		trap_SendClientCommand("bombas_throwknife");
 		return;
 	}

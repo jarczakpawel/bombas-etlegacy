@@ -2607,6 +2607,7 @@ void CG_DrawActiveFrame(int serverTime, qboolean demoPlayback)
 
 	// update cg.predictedPlayerState
 	CG_PredictPlayerState();
+	CG_BombasKnifeUpdate();
 
 	DEBUGTIME
 

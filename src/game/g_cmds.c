@@ -2308,6 +2308,22 @@ void Cmd_Team_f(gentity_t *ent, unsigned int dwCommand, int value)
 		playerType = PC_SOLDIER;
 	}
 
+	if (team == TEAM_AXIS || team == TEAM_ALLIES)
+	{
+		if (g_bombasMode.integer == 1)
+		{
+			playerType = PC_SOLDIER;
+		}
+		else if (g_bombasMode.integer == 2)
+		{
+			playerType = PC_MEDIC;
+		}
+		else if (g_bombasMode.integer == 3)
+		{
+			playerType = PC_COVERTOPS;
+		}
+	}
+
 	if (G_IsClassFull(ent, playerType, team))
 	{
 		CP("print \"team: class is not available\n\"");
@@ -2372,6 +2388,20 @@ void Cmd_Team_f(gentity_t *ent, unsigned int dwCommand, int value)
 			{
 				w2 = GetWeaponTableData(ent->client->sess.playerWeapon2)->weapEquiv;
 			}
+		}
+	}
+
+	if (team == TEAM_AXIS || team == TEAM_ALLIES)
+	{
+		if (g_bombasMode.integer == 1)
+		{
+			w = team == TEAM_AXIS ? WP_PANZERFAUST : WP_BAZOOKA;
+			w2 = WP_NONE;
+		}
+		else if (g_bombasMode.integer == 3)
+		{
+			w = team == TEAM_AXIS ? WP_K43 : WP_GARAND;
+			w2 = WP_NONE;
 		}
 	}
 
