@@ -10,6 +10,11 @@ parser.add_argument('--artifacts', required=True, type=Path)
 parser.add_argument('--output', required=True, type=Path)
 args = parser.parse_args()
 
+version_path = Path(__file__).with_name('CLIENT_VERSION')
+version = int(version_path.read_text().strip()) if version_path.exists() else 84
+if not 1 <= version <= 999:
+    raise ValueError('Invalid client package version')
+
 required = {
     'linux64': 'cgame.mp.x86_64.so',
     'linux32': 'cgame.mp.i386.so',
@@ -51,7 +56,7 @@ for name in ('pt1_strt.wav', 'pt1_end.wav'):
     files['sound/movers/plats/' + name] = payload
 
 files['bombas/client_manifest.json'] = (json.dumps({
-    'version': 84,
+    'version': version,
     'supported_platforms': list(required),
     'native_sha256': checksums,
     'requires_installer': False,
@@ -69,6 +74,6 @@ with zipfile.ZipFile(temporary) as archive:
     if archive.testzip() is not None or set(archive.namelist()) != set(files):
         raise ValueError('Client package verification failed')
 digest = hashlib.sha256(temporary.read_bytes()).hexdigest()
-result = args.output / f'zzzzzz_bombas_client_universal_v084_{digest[:12]}.pk3'
+result = args.output / f'zzzzzz_bombas_client_universal_v{version:03d}_{digest[:12]}.pk3'
 temporary.rename(result)
 print(json.dumps({'file': result.name, 'sha256': digest, 'files': sorted(files), 'native_sha256': checksums}, indent=2))

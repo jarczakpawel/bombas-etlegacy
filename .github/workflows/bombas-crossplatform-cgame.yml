@@ -6,7 +6,7 @@ permissions:
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, feature/bombas-r87-m1897]
   pull_request:
     branches: [main]
 
@@ -107,7 +107,11 @@ jobs:
             const fs = require('fs');
             const crypto = require('crypto');
             const owner = context.repo.owner, repo = context.repo.repo;
-            const files = fs.readdirSync('dist').filter(n => /^zzzzzz_bombas_client_universal_v084_[a-f0-9]{12}\.pk3$/.test(n));
+            const versionFile = 'tools/bombas/CLIENT_VERSION';
+            const version = fs.existsSync(versionFile) ? Number(fs.readFileSync(versionFile, 'utf8').trim()) : 84;
+            if (!Number.isInteger(version) || version < 1 || version > 999) throw new Error('Invalid client version');
+            const filename = new RegExp('^zzzzzz_bombas_client_universal_v' + String(version).padStart(3,'0') + '_[a-f0-9]{12}\\.pk3$');
+            const files = fs.readdirSync('dist').filter(n => filename.test(n));
             if (files.length !== 1) throw new Error('Expected exactly one validated universal client package');
             const bytes = fs.readFileSync('dist/' + files[0]);
             const digest = crypto.createHash('sha256').update(bytes).digest('hex');
