@@ -650,7 +650,11 @@ static void WM_DrawClientScore_Score(int x, int y, float scaleX, float scaleY, c
 
 static void WM_DrawClientScore_Ping(int x, int y, float scaleX, float scaleY, const score_t *score)
 {
-	if (score->ping == -1)
+	if (score->ping == -2)
+	{
+		CG_Text_Paint_RightAligned_Ext(x, y, scaleX * 0.6f, scaleY, colorYellow, "DOWNLOADING", 0, 0, ITEM_TEXTSTYLE_SHADOWED, FONT_TEXT);
+	}
+	else if (score->ping == -1)
 	{
 		CG_Text_Paint_RightAligned_Ext(x, y, scaleX, scaleY, colorRed, "^1CONN^7", 0, 0, ITEM_TEXTSTYLE_SHADOWED, FONT_TEXT);
 	}
@@ -723,7 +727,12 @@ static void WM_DrawClientScore_Spectator(int x, int y, float scaleX, float scale
 	x += cg_gameType.integer == GT_WOLF_LMS ? INFO_SCORE_WIDTH : INFO_XP_WIDTH;
 
 	// show connecting people as CONNECTING
-	if (score->ping == -1)
+	if (score->ping == -2)
+	{
+		s = CG_TranslateString("DOWNLOADING");
+		p = "";
+	}
+	else if (score->ping == -1)
 	{
 		s = CG_TranslateString("CONNECTING");
 		p = "";

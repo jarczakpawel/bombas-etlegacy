@@ -349,7 +349,7 @@ qboolean G_SendScore_Add(gentity_t *ent, int i, char *buf, int bufsize)
 
 	if (cl->pers.connected == CON_CONNECTING)
 	{
-		ping = -1;
+		ping = cl->ps.ping == -2 ? -2 : -1;
 	}
 	else
 	{
