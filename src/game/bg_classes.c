@@ -51,7 +51,6 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 				{ WP_FLAMETHROWER,         SK_HEAVY_WEAPONS,                            0,                         200, 0   },
 				{ WP_PANZERFAUST,          SK_HEAVY_WEAPONS,                            0,                         4,   0   },
 				{ WP_MORTAR2,              SK_HEAVY_WEAPONS,                            0,                         15,  0   },
-				{ WP_BOMBAS_M1897, SK_LIGHT_WEAPONS, 0, 16, 8 },
 			},
 			{
 				{ WP_LUGER,                SK_LIGHT_WEAPONS,                            0,                         24,  8   },
@@ -74,6 +73,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{ WP_KNIFE,                SK_LIGHT_WEAPONS,                            0,                         1,   0   },
 			{
 				{ WP_MP40,                 SK_LIGHT_WEAPONS,                            0,                         0,   30  }, // medic start with 1 clip less
+				{ WP_BOMBAS_M1897,         SK_LIGHT_WEAPONS,                            0,                         16,  8   },
 			},
 			{
 				{ WP_LUGER,                SK_LIGHT_WEAPONS,                            0,                         24,  8   },
@@ -98,6 +98,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{ WP_KNIFE,                SK_LIGHT_WEAPONS,                            0,                         1,   0   },
 			{
 				{ WP_MP40,                 SK_LIGHT_WEAPONS,                            0,                         30,  30  },
+				{ WP_BOMBAS_M1897,         SK_LIGHT_WEAPONS,                            0,                         16,  8   },
 				{ WP_KAR98,                SK_LIGHT_WEAPONS,                            0,                         20,  10  },
 			},
 			{
@@ -124,6 +125,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{ WP_KNIFE,                SK_LIGHT_WEAPONS,                            0,                         1,   0   },
 			{
 				{ WP_MP40,                 SK_LIGHT_WEAPONS,                            0,                         30,  30  },
+				{ WP_BOMBAS_M1897,         SK_LIGHT_WEAPONS,                            0,                         16,  8   },
 			},
 			{
 				{ WP_LUGER,                SK_LIGHT_WEAPONS,                            0,                         24,  8   },
@@ -180,7 +182,6 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 				{ WP_FLAMETHROWER,         SK_HEAVY_WEAPONS,                            0,                         200, 0   },
 				{ WP_BAZOOKA,              SK_HEAVY_WEAPONS,                            0,                         4,   0   },
 				{ WP_MORTAR,               SK_HEAVY_WEAPONS,                            0,                         15,  0   },
-				{ WP_BOMBAS_M1897, SK_LIGHT_WEAPONS, 0, 16, 8 },
 			},
 			{
 				{ WP_COLT,                 SK_LIGHT_WEAPONS,                            0,                         24,  8   },
@@ -203,6 +204,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{ WP_KNIFE_KABAR,          SK_LIGHT_WEAPONS,                            0,                         1,   0   },
 			{
 				{ WP_THOMPSON,             SK_LIGHT_WEAPONS,                            0,                         0,   30  }, // medic start with 1 clip less
+				{ WP_BOMBAS_M1897,         SK_LIGHT_WEAPONS,                            0,                         16,  8   },
 			},
 			{
 				{ WP_COLT,                 SK_LIGHT_WEAPONS,                            0,                         24,  8   },
@@ -227,6 +229,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{ WP_KNIFE_KABAR,          SK_LIGHT_WEAPONS,                            0,                         1,   0   },
 			{
 				{ WP_THOMPSON,             SK_LIGHT_WEAPONS,                            0,                         30,  30  },
+				{ WP_BOMBAS_M1897,         SK_LIGHT_WEAPONS,                            0,                         16,  8   },
 				{ WP_CARBINE,              SK_LIGHT_WEAPONS,                            0,                         20,  10  },
 			},
 			{
@@ -253,6 +256,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{ WP_KNIFE_KABAR,          SK_LIGHT_WEAPONS,                            0,                         1,   0   },
 			{
 				{ WP_THOMPSON,             SK_LIGHT_WEAPONS,                            0,                         30,  30  },
+				{ WP_BOMBAS_M1897,         SK_LIGHT_WEAPONS,                            0,                         16,  8   },
 			},
 			{
 				{ WP_COLT,                 SK_LIGHT_WEAPONS,                            0,                         24,  8   },

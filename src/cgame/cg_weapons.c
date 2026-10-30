@@ -4291,6 +4291,22 @@ void CG_WeaponBank_f(void)
 		return;
 	}
 
+	if (bank == 3 && cg.snap && cg.predictedPlayerState.stats[STAT_PLAYER_CLASS] == PC_SOLDIER &&
+	    CG_WeaponSelectable(WP_BOMBAS_M1897, qfalse))
+	{
+		int primary = cgs.clientinfo[cg.snap->ps.clientNum].weapon;
+		if (IS_VALID_WEAPON(primary) && primary != WP_BOMBAS_M1897 && CG_WeaponSelectable(primary, qfalse))
+		{
+			if (cg.snap->ps.weapon != cg.weaponSelect ||
+			    (cg.snap->ps.nextWeapon && cg.snap->ps.weapon != cg.snap->ps.nextWeapon))
+			{
+				return;
+			}
+			CG_FinishWeaponChange(cg.weaponSelect, cg.weaponSelect == WP_BOMBAS_M1897 ? primary : WP_BOMBAS_M1897);
+			return;
+		}
+	}
+
 	if (bank == 4 && CG_WeaponSelectable(WP_GRENADE_LAUNCHER, qfalse) && CG_WeaponSelectable(WP_GRENADE_PINEAPPLE, qfalse))
 	{
 		if (cg.snap->ps.weapon != cg.weaponSelect ||

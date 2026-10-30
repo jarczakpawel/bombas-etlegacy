@@ -2185,10 +2185,10 @@ void G_LandmineThink(gentity_t *self)
 			continue;
 		}
 
-		//if (!g_friendlyFire.integer && self->s.teamNum == ent->client->sess.sessionTeam)
-		//{
-		//   continue;
-		//}
+		if (!g_friendlyFire.integer && self->s.teamNum == ent->client->sess.sessionTeam)
+		{
+			continue;
+		}
 
 #ifdef FEATURE_OMNIBOT
 		if (!(g_OmniBotFlags.integer & OBF_TRIGGER_MINES) && ent->r.svFlags & SVF_BOT)
@@ -2250,6 +2250,11 @@ void LandminePostThink(gentity_t *self)
 	for (i = 0; i < cnt; i++)
 	{
 		ent = &g_entities[entityList[i]];
+
+		if (!ent->client || (!g_friendlyFire.integer && self->s.teamNum == ent->client->sess.sessionTeam))
+		{
+			continue;
+		}
 
 		// use the unifed trigger check to see if we're still standing on the mine, so we don't set it off
 		if (sEntWillTriggerMine(ent, self))

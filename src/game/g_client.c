@@ -1311,7 +1311,15 @@ void SetWolfSpawnWeapons(gclient_t *client)
 
 	// add primary weapon (set to current weapon)
 	weaponPrimary = weaponClassInfo->weapon;
+	if (pc == PC_SOLDIER && client->sess.playerWeapon == WP_BOMBAS_M1897)
+	{
+		client->sess.playerWeapon = weaponPrimary;
+	}
 	AddWeaponToPlayer(client, weaponClassInfo->weapon, weaponClassInfo->startingAmmo, weaponClassInfo->startingClip, qtrue);
+	if (pc == PC_SOLDIER && !COM_BitCheck(client->ps.weapons, WP_BOMBAS_M1897))
+	{
+		AddWeaponToPlayer(client, WP_BOMBAS_M1897, 16, 8, qfalse);
+	}
 
 	//
 	// secondary weapon

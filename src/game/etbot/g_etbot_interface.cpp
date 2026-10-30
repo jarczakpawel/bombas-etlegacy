@@ -83,6 +83,8 @@ struct BombasFireThreat
     float pos[3];
     float radius;
     int expiry;
+    int owner;
+    int ownerConnectTime;
 };
 
 static BombasFireThreat bombasThreats[48];
@@ -117,6 +119,8 @@ static void BombasRefreshFireThreats()
         VectorCopy(ent->r.currentOrigin, fire.pos);
         fire.radius = ent->speed > 1.f ? ent->speed : 108.f;
         fire.expiry = ent->timestamp;
+        fire.owner = ent->r.ownerNum;
+        fire.ownerConnectTime = ent->count2;
     }
 }
 
@@ -208,6 +212,18 @@ static void BombasAvoidFire(gentity_t *bot, usercmd_t &cmd)
     for (int i = 0; i < bombasThreatCount; ++i)
     {
         const BombasFireThreat &fire = bombasThreats[i];
+        const int ownerId = fire.owner;
+        if (!g_friendlyFire.integer && ownerId >= 0 && ownerId < level.maxclients)
+        {
+            const gentity_t *owner = &g_entities[ownerId];
+            if (owner != bot && owner->inuse && owner->client &&
+                owner->client->pers.connected == CON_CONNECTED &&
+                owner->client->pers.connectTime == fire.ownerConnectTime &&
+                owner->client->sess.sessionTeam == bot->client->sess.sessionTeam)
+            {
+                continue;
+            }
+        }
         const float currentDist = sqrtf(BombasDistSqXY(position, fire.pos));
         if (currentDist > fire.radius + 205.f)
         {
@@ -315,7 +331,19 @@ static void BombasAvoidFire(gentity_t *bot, usercmd_t &cmd)
         float clearance = 1e5f;
         for (int j = 0; j < bombasThreatCount; ++j)
         {
-            const float candidate = sqrtf(BombasDistSqXY(reach, bombasThreats[j].pos)) - bombasThreats[j].radius;
+            const BombasFireThreat &threat = bombasThreats[j];
+            if (!g_friendlyFire.integer && threat.owner >= 0 && threat.owner < level.maxclients)
+            {
+                const gentity_t *owner = &g_entities[threat.owner];
+                if (owner != bot && owner->inuse && owner->client &&
+                    owner->client->pers.connected == CON_CONNECTED &&
+                    owner->client->pers.connectTime == threat.ownerConnectTime &&
+                    owner->client->sess.sessionTeam == bot->client->sess.sessionTeam)
+                {
+                    continue;
+                }
+            }
+            const float candidate = sqrtf(BombasDistSqXY(reach, threat.pos)) - threat.radius;
             if (candidate < clearance) clearance = candidate;
         }
         if (dist < fire.radius + 20.f)
