@@ -1380,6 +1380,39 @@ void SetWolfSpawnWeapons(gclient_t *client)
 	}
 }
 
+void G_BombasEquipDualGrenades(gclient_t *client)
+{
+	if (g_bombasMode.integer != 1 && (client->sess.sessionTeam == TEAM_AXIS || client->sess.sessionTeam == TEAM_ALLIES))
+	{
+		weapon_t normal = WP_GRENADE_LAUNCHER;
+		weapon_t bottle = WP_GRENADE_PINEAPPLE;
+
+		if (G_BombasMolotovWeapon(bottle, client->sess.sessionTeam) && client->sess.sessionTeam == TEAM_ALLIES &&
+		    COM_BitCheck(client->ps.weapons, bottle) && !COM_BitCheck(client->ps.weapons, normal))
+		{
+			client->ps.ammo[GetWeaponTableData(normal)->ammoIndex] = client->ps.ammo[GetWeaponTableData(bottle)->ammoIndex];
+			client->ps.ammoclip[GetWeaponTableData(normal)->clipIndex] = client->ps.ammoclip[GetWeaponTableData(bottle)->clipIndex];
+			COM_BitSet(client->ps.weapons, normal);
+			COM_BitClear(client->ps.weapons, bottle);
+			if (client->ps.weapon == bottle)
+			{
+				client->ps.weapon = normal;
+			}
+		}
+
+		if (COM_BitCheck(client->ps.weapons, normal) && G_BombasMolotovWeapon(bottle, client->sess.sessionTeam))
+		{
+			COM_BitSet(client->ps.weapons, bottle);
+			client->ps.ammo[GetWeaponTableData(bottle)->ammoIndex] = 1;
+			client->ps.ammoclip[GetWeaponTableData(bottle)->clipIndex] = 1;
+#ifdef FEATURE_OMNIBOT
+			Bot_Event_AddWeapon(client->ps.clientNum, Bot_WeaponGameToBot(bottle));
+#endif
+		}
+	}
+
+}
+
 /**
  * @brief G_CountTeamMedics
  * @param[in] team
@@ -3472,33 +3505,9 @@ void ClientSpawn(gentity_t *ent, qboolean revived, qboolean teamChange, qboolean
 		}
 	}
 
-	if (!revived && g_bombasMode.integer != 1 && (client->sess.sessionTeam == TEAM_AXIS || client->sess.sessionTeam == TEAM_ALLIES))
+	if (!revived)
 	{
-		weapon_t normal = WP_GRENADE_LAUNCHER;
-		weapon_t bottle = WP_GRENADE_PINEAPPLE;
-
-		if (G_BombasMolotovWeapon(bottle, client->sess.sessionTeam) && client->sess.sessionTeam == TEAM_ALLIES &&
-		    COM_BitCheck(client->ps.weapons, bottle) && !COM_BitCheck(client->ps.weapons, normal))
-		{
-			client->ps.ammo[GetWeaponTableData(normal)->ammoIndex] = client->ps.ammo[GetWeaponTableData(bottle)->ammoIndex];
-			client->ps.ammoclip[GetWeaponTableData(normal)->clipIndex] = client->ps.ammoclip[GetWeaponTableData(bottle)->clipIndex];
-			COM_BitSet(client->ps.weapons, normal);
-			COM_BitClear(client->ps.weapons, bottle);
-			if (client->ps.weapon == bottle)
-			{
-				client->ps.weapon = normal;
-			}
-		}
-
-		if (COM_BitCheck(client->ps.weapons, normal) && G_BombasMolotovWeapon(bottle, client->sess.sessionTeam))
-		{
-			COM_BitSet(client->ps.weapons, bottle);
-			client->ps.ammo[GetWeaponTableData(bottle)->ammoIndex] = 1;
-			client->ps.ammoclip[GetWeaponTableData(bottle)->clipIndex] = 1;
-#ifdef FEATURE_OMNIBOT
-			Bot_Event_AddWeapon(client->ps.clientNum, Bot_WeaponGameToBot(bottle));
-#endif
-		}
+		G_BombasEquipDualGrenades(client);
 	}
 
 	// client has (almost) no say in weapon selection when spawning

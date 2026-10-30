@@ -1758,6 +1758,7 @@ void G_RunClient(gentity_t *ent)
 		else
 		{
 			(void)G_BombasCorpseDrag(ent);
+			G_BombasClassStealRelease(ent);
 			ent->client->activateHeld = qfalse;
 		}
 	}

@@ -71,6 +71,7 @@ extern vmCvar_t g_goomba;
 extern vmCvar_t g_bombasAdrenaline;
 extern vmCvar_t g_bombasAdrenalineShare;
 extern vmCvar_t g_bombasCorpseDrag;
+extern vmCvar_t g_bombasClassSteal;
 extern vmCvar_t g_speed;
 extern vmCvar_t g_knockback;
 

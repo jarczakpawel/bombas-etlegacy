@@ -1769,6 +1769,7 @@ qboolean SpotWouldTelefrag(gentity_t *spot);
 void AddMedicTeamBonus(gclient_t *client);
 
 void SetWolfSpawnWeapons(gclient_t *client);
+void G_BombasEquipDualGrenades(gclient_t *client);
 void limbo(gentity_t *ent, qboolean makeCorpse);
 void reinforce(gentity_t *ent);
 
@@ -1897,6 +1898,7 @@ qboolean G_BombasCanKickGrenade(gentity_t *player, gentity_t *missile);
 void G_BombasThrowKnife(gentity_t *ent);
 qboolean G_BombasCorpseDrag(gentity_t *ent);
 void Cmd_Activate2_f(gentity_t *ent);
+void G_BombasClassStealRelease(gentity_t *ent);
 qboolean Do_Activate_f(gentity_t *ent, gentity_t *traceEnt);
 void G_LeaveTank(gentity_t *ent, qboolean position);
 

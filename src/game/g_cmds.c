@@ -4763,6 +4763,147 @@ qboolean G_BombasCorpseDrag(gentity_t *ent)
     return qtrue;
 }
 
+static int bombasClassStealSpawn[MAX_CLIENTS];
+static int bombasClassStealConnect[MAX_CLIENTS];
+static int bombasClassStealTarget[MAX_CLIENTS];
+static int bombasClassStealStamp[MAX_CLIENTS];
+static int bombasClassStealLast[MAX_CLIENTS];
+static int bombasClassStealProgress[MAX_CLIENTS];
+static qboolean bombasClassStealUsed[MAX_CLIENTS];
+
+void G_BombasClassStealRelease(gentity_t *ent)
+{
+    if (ent && ent->client && ent->s.number >= 0 && ent->s.number < level.maxclients)
+    {
+        int id = ent->s.number;
+        bombasClassStealTarget[id] = 0;
+        bombasClassStealProgress[id] = 0;
+    }
+}
+
+static qboolean G_BombasClassSteal(gentity_t *ent, gentity_t *body)
+{
+    int id, targetClass, i, oldClass;
+    weapon_t primary = WP_NONE, secondary;
+    bg_playerclass_t *info;
+
+    if (!ent || !ent->client || !body || !body->inuse || !g_bombasClassSteal.integer ||
+        g_bombasMode.integer || ent->s.number < 0 || ent->s.number >= level.maxclients ||
+        (ent->r.svFlags & SVF_BOT) || ent->health <= 0 || ent->client->ps.pm_type != PM_NORMAL ||
+        (ent->client->ps.pm_flags & PMF_LIMBO) || BG_PlayerMounted(ent->client->ps.eFlags) ||
+        ent->client->ps.powerups[PW_BLUEFLAG] || ent->client->ps.powerups[PW_REDFLAG] ||
+        g_gamestate.integer != GS_PLAYING || body->s.eType != ET_CORPSE ||
+        !(body->r.contents & CONTENTS_CORPSE) || body->s.time2 || body->activator ||
+        BODY_TEAM(body) != ent->client->sess.sessionTeam ||
+        (BODY_TEAM(body) != TEAM_AXIS && BODY_TEAM(body) != TEAM_ALLIES))
+    {
+        return qfalse;
+    }
+
+    targetClass = BODY_CLASS(body);
+    if (targetClass < PC_SOLDIER || targetClass >= NUM_PLAYER_CLASSES ||
+        targetClass == ent->client->sess.playerType)
+    {
+        return qfalse;
+    }
+
+    id = ent->s.number;
+    if (bombasClassStealConnect[id] != ent->client->pers.connectTime ||
+        bombasClassStealSpawn[id] != ent->client->ps.persistant[PERS_SPAWN_COUNT])
+    {
+        bombasClassStealConnect[id] = ent->client->pers.connectTime;
+        bombasClassStealSpawn[id] = ent->client->ps.persistant[PERS_SPAWN_COUNT];
+        bombasClassStealUsed[id] = qfalse;
+        G_BombasClassStealRelease(ent);
+    }
+
+    if (bombasClassStealUsed[id])
+    {
+        return qfalse;
+    }
+
+    if (bombasClassStealTarget[id] != body->s.number + 1 ||
+        bombasClassStealStamp[id] != body->timestamp ||
+        level.time < bombasClassStealLast[id] ||
+        level.time - bombasClassStealLast[id] > 150)
+    {
+        bombasClassStealTarget[id] = body->s.number + 1;
+        bombasClassStealStamp[id] = body->timestamp;
+        bombasClassStealProgress[id] = 0;
+        trap_SendServerCommand(id, "cp \"^3Changing class...^7\"");
+    }
+    else
+    {
+        bombasClassStealProgress[id] += level.time - bombasClassStealLast[id];
+    }
+    bombasClassStealLast[id] = level.time;
+
+    if (bombasClassStealProgress[id] < 1500)
+    {
+        return qtrue;
+    }
+
+    G_BombasClassStealRelease(ent);
+    if (G_IsClassFull(ent, targetClass, ent->client->sess.sessionTeam))
+    {
+        return qtrue;
+    }
+
+    info = BG_GetPlayerClassInfo(ent->client->sess.sessionTeam, targetClass);
+    for (i = 0; i < MAX_WEAPS_PER_CLASS && info->classPrimaryWeapons[i].weapon; i++)
+    {
+        bg_weaponclass_t *weapon = &info->classPrimaryWeapons[i];
+        if (BG_IsSkillAvailable(ent->client->sess.skill, weapon->skill, weapon->minSkillLevel) &&
+            !G_IsWeaponDisabled(ent, weapon->weapon))
+        {
+            primary = weapon->weapon;
+            break;
+        }
+    }
+    if (primary == WP_NONE)
+    {
+        trap_SendServerCommand(id, "cp \"^1No available primary weapon^7\"");
+        return qtrue;
+    }
+
+    secondary = BG_GetBestSecondaryWeapon(targetClass, ent->client->sess.sessionTeam, primary, ent->client->sess.skill);
+    oldClass = ent->client->sess.playerType;
+    ent->client->sess.playerType = targetClass;
+    ent->client->sess.latchPlayerType = targetClass;
+    ent->client->sess.playerWeapon = primary;
+    ent->client->sess.latchPlayerWeapon = primary;
+    ent->client->sess.playerWeapon2 = secondary;
+    ent->client->sess.latchPlayerWeapon2 = secondary;
+    ent->client->ps.powerups[PW_OPS_DISGUISED] = 0;
+    ent->client->ps.powerups[PW_OPS_CLASS_1] = 0;
+    ent->client->ps.powerups[PW_OPS_CLASS_2] = 0;
+    ent->client->ps.powerups[PW_OPS_CLASS_3] = 0;
+    ent->client->disguiseClientNum = -1;
+    ent->client->ps.eFlags &= ~EF_ZOOMING;
+    ent->client->ps.stats[STAT_KEYS] &= ~(1 << INV_BINOCS);
+    ent->client->pmext.silencedSideArm = 0;
+    ent->client->ps.weaponTime = 0;
+    ent->client->ps.classWeaponTime = level.time;
+    SetWolfSpawnWeapons(ent->client);
+    G_BombasEquipDualGrenades(ent->client);
+    AddMedicTeamBonus(ent->client);
+    if (ent->health > ent->client->ps.stats[STAT_MAX_HEALTH])
+    {
+        ent->health = ent->client->ps.stats[STAT_MAX_HEALTH];
+    }
+    ent->client->ps.stats[STAT_HEALTH] = ent->health;
+    ent->client->pers.cmd.weapon = ent->client->ps.weapon;
+    G_UpdateCharacter(ent->client);
+    ClientUserinfoChanged(id);
+
+    BODY_TEAM(body) += 4;
+    body->s.time2 = 1;
+    bombasClassStealUsed[id] = qtrue;
+    trap_SendServerCommand(id, "cp \"^2Class changed!^7\"");
+    G_LogPrintf("Bombas_ClassSteal: %d %d %d %d\n", id, body->s.number, oldClass, targetClass);
+    return qtrue;
+}
+
 void Cmd_Activate2_f(gentity_t *ent)
 {
 	trace_t tr;
@@ -4831,6 +4972,11 @@ void Cmd_Activate2_f(gentity_t *ent)
 
 	G_ResetTempTraceIgnoreEnts();
 
+	if (tr.entityNum >= 0 && tr.entityNum < level.num_entities &&
+	    G_BombasClassSteal(ent, &g_entities[tr.entityNum]))
+	{
+		return;
+	}
 	if (Do_UniformStealing(ent, &g_entities[tr.entityNum]))
 	{
 		return;
