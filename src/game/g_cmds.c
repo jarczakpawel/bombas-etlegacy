@@ -4744,11 +4744,11 @@ qboolean G_BombasCorpseDrag(gentity_t *ent)
                    target->s.number, CONTENTS_SOLID | CONTENTS_PLAYERCLIP);
         if (ground.startsolid || ground.allsolid || ground.fraction == 1.f ||
             ground.plane.normal[2] < .68f ||
-            fabsf(ground.endpos[2] - next[2]) > 18.f)
+            fabsf(ground.endpos[2] - (next[2] + target->r.mins[2])) > 18.f)
         {
             return qtrue;
         }
-        next[2] = ground.endpos[2];
+        next[2] = ground.endpos[2] - target->r.mins[2];
         VectorCopy(next, target->client->ps.origin);
         VectorCopy(next, target->r.currentOrigin);
         VectorCopy(next, target->s.pos.trBase);
