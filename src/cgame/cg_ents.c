@@ -1034,6 +1034,11 @@ qboolean CG_PlayerSeesItem(playerState_t *ps, entityState_t *item, int atTime, i
  */
 static int CG_PlayerCanPickupWeapon(int clientNum, weapon_t weapon)
 {
+	int mode = Q_atoi(Info_ValueForKey(CG_ConfigString(CS_SERVERINFO), "g_bombasMode"));
+	if (mode == 1 || mode == 3)
+	{
+		return qfalse;
+	}
 	return BG_ClassHasWeapon(GetPlayerClassesData(TEAM_AXIS, cgs.clientinfo[clientNum].cls), weapon) ||
 	       BG_ClassHasWeapon(GetPlayerClassesData(TEAM_ALLIES, cgs.clientinfo[clientNum].cls), weapon);
 }

@@ -166,6 +166,8 @@ void G_BombasThrowKnife(gentity_t *ent)
     VectorCopy(start, bolt->r.currentOrigin);
     trap_LinkEntity(bolt);
 
+    BG_AnimScriptEvent(&ent->client->ps, ent->client->pers.character->animModelInfo,
+                       ANIM_ET_FIREWEAPON, qfalse);
     bombasKnifeShots[id]++;
     bombasKnifeLastShot[id] = level.time;
     trap_SendServerCommand(id, va("bombas_knives %d %d", 3 - bombasKnifeShots[id], bombasKnifeSpawnCount[id]));

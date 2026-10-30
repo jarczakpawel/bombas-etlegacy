@@ -3094,47 +3094,37 @@ void CG_DrawSpeed(hudComponent_t *comp)
 	}
 }
 
-#define MAX_FPS_FRAMES  500
-
 /**
  * @brief CG_ComputeFPS
  */
 void CG_ComputeFPS(void)
 {
-	static int          previousTimes[MAX_FPS_FRAMES];
-	static int          previous;
-	static unsigned int index;
-	int                 t;
-	int                 frameTime;
+	static int previous;
+	static int elapsed;
+	static int frames;
+	int now = trap_Milliseconds();
+	int frameTime = now - previous;
 
 	// don't use serverTime, because that will be drifting
 	// to correct for internet lag changes, timescales, timedemos, etc
-	t = trap_Milliseconds();
+	previous = now;
 
-	frameTime = t - previous;
-	previous  = t;
-
-	previousTimes[index % MAX_FPS_FRAMES] = frameTime;
-	index++;
-
-	if (index > MAX_FPS_FRAMES)
+	if (frameTime < 0 || frameTime > 1000)
 	{
-		unsigned int i;
-		// average multiple frames together to smooth changes out a bit
-		int total = 0;
-
-		for (i = 0; i < MAX_FPS_FRAMES; ++i)
-		{
-			total += previousTimes[i];
-		}
-
-		total = total ? total : 1;
-
-		fps = 1000 * MAX_FPS_FRAMES / total;
-	}
-	else
-	{
+		elapsed = 0;
+		frames = 0;
 		fps = -1;
+		return;
+	}
+
+	elapsed += frameTime;
+	frames++;
+	if (elapsed >= 300)
+	{
+		// average multiple frames together to smooth changes out a bit
+		fps = (frames * 1000 + elapsed / 2) / elapsed;
+		elapsed = 0;
+		frames = 0;
 	}
 }
 
@@ -3159,32 +3149,20 @@ static qboolean CG_BombasStatsVisible(void)
 
 static int CG_BombasDisplayPing(void)
 {
-    static int displayed = -1;
-    static int refresh;
-    int now = trap_Milliseconds();
-    if (cg.snap && now >= refresh)
+    if (!cg.snap || cg.snap->ps.ping < 0 || cg.snap->ps.ping >= 999)
     {
-        int current = Com_Clamp(0, 999, cg.snap->ping);
-        displayed = displayed < 0 ? current : (displayed * 2 + current + 1) / 3;
-        refresh = now + 1500;
+        return -1;
     }
-    return displayed;
+    return cg.snap->ps.ping;
 }
 
 void CG_DrawFPS(hudComponent_t *comp)
 {
-	static int displayFPS = -1;
-	static int nextRefresh;
-	int now = trap_Milliseconds();
+	int displayFPS = fps;
 
 	if (!CG_BombasStatsVisible())
 	{
 		return;
-	}
-	if (now >= nextRefresh)
-	{
-		displayFPS = fps;
-		nextRefresh = now + 1500;
 	}
 
     if (!Q_stricmp(cg_altHud.string, "Bombas Performance"))

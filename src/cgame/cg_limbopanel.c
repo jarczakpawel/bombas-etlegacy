@@ -52,6 +52,28 @@ const team_t teamOrder[3] =
 	TEAM_SPECTATOR,
 };
 
+static int CG_LimboPanel_BombasMode(void)
+{
+	return Q_atoi(Info_ValueForKey(CG_ConfigString(CS_SERVERINFO), "g_bombasMode"));
+}
+
+static weapon_t CG_LimboPanel_ForcedWeapon(team_t team)
+{
+	if (team != TEAM_AXIS && team != TEAM_ALLIES)
+	{
+		return WP_NONE;
+	}
+	if (CG_LimboPanel_BombasMode() == 1)
+	{
+		return team == TEAM_AXIS ? WP_PANZERFAUST : WP_BAZOOKA;
+	}
+	if (CG_LimboPanel_BombasMode() == 3)
+	{
+		return team == TEAM_AXIS ? WP_K43 : WP_GARAND;
+	}
+	return WP_NONE;
+}
+
 static panel_button_text_t nameEditFont =
 {
 	0.22f,                   0.24f,
@@ -1361,8 +1383,8 @@ void CG_LimboPanel_SendSetupMsg(qboolean forceteam)
 		return;
 	}
 
-	weap1 = cgs.ccSelectedPrimaryWeapon;
-	weap2 = cgs.ccSelectedSecondaryWeapon;
+	weap1 = CG_LimboPanel_GetSelectedWeapon(PRIMARY_SLOT);
+	weap2 = CG_LimboPanel_GetSelectedWeapon(SECONDARY_SLOT);
 
 	// TODO: handle all case ?
 	switch (team)
@@ -1405,7 +1427,7 @@ void CG_LimboPanel_SendSetupMsg(qboolean forceteam)
 		break;
 	}
 
-	if (BG_IsSkillAvailable(cgs.clientinfo[cg.clientNum].skill, SK_HEAVY_WEAPONS, SK_SOLDIER_SMG) && cgs.clientinfo[cg.clientNum].cls == PC_SOLDIER && !Q_stricmp(GetWeaponTableData(weap1)->desc, GetWeaponTableData(weap2)->desc))
+	if (weap2 == WP_NONE || (BG_IsSkillAvailable(cgs.clientinfo[cg.clientNum].skill, SK_HEAVY_WEAPONS, SK_SOLDIER_SMG) && cgs.clientinfo[cg.clientNum].cls == PC_SOLDIER && !Q_stricmp(GetWeaponTableData(weap1)->desc, GetWeaponTableData(weap2)->desc)))
 	{
 		CG_PriorityCenterPrint(va(CG_TranslateString("You will spawn as an %s %s with a %s."), str, BG_ClassnameForNumber(CG_LimboPanel_GetClass()), GetWeaponTableData(weap1)->desc), -1);
 	}
@@ -1607,7 +1629,8 @@ qboolean CG_LimboPanel_ClassButton_KeyDown(panel_button_t *button, int key)
 	}
 
 
-	if (CG_LimboPanel_ClassIsDisabled(CG_LimboPanel_GetTeam(), button->data[1]))
+	if (((CG_LimboPanel_BombasMode() >= 1 && CG_LimboPanel_BombasMode() <= 3) && button->data[1] != CG_LimboPanel_GetClass()) ||
+	    CG_LimboPanel_ClassIsDisabled(CG_LimboPanel_GetTeam(), button->data[1]))
 	{
 		return qfalse;
 	}
@@ -2614,6 +2637,12 @@ static vec4_t clrWeaponPanel2 = { 1.f, 1.f, 1.f, 0.4f };
  */
 static weapon_t CG_LimboPanel_WeaponPanel_GetSelectableWeaponOption(bg_playerclass_t *classInfo, int weapon)
 {
+	weapon_t forced = CG_LimboPanel_ForcedWeapon(CG_LimboPanel_GetTeam());
+	if (forced != WP_NONE)
+	{
+		return cgs.ccSelectedWeaponSlot == PRIMARY_SLOT && weapon == 0 ? forced : WP_NONE;
+	}
+
 	if (cgs.ccSelectedWeaponSlot == PRIMARY_SLOT)
 	{
 		// is player had the minimum level required to use this weapon
@@ -3753,6 +3782,22 @@ team_t CG_LimboPanel_GetRealTeam(void)
  */
 int CG_LimboPanel_GetClass(void)
 {
+	int mode = CG_LimboPanel_BombasMode();
+	if (CG_LimboPanel_GetTeam() != TEAM_SPECTATOR)
+	{
+		if (mode == 1)
+		{
+			return PC_SOLDIER;
+		}
+		if (mode == 2)
+		{
+			return PC_MEDIC;
+		}
+		if (mode == 3)
+		{
+			return PC_COVERTOPS;
+		}
+	}
 	return cgs.ccSelectedClass;
 }
 
@@ -3783,6 +3828,11 @@ int CG_LimboPanel_WeaponCount(int slotNumber)
 {
 	bg_playerclass_t *classInfo = CG_LimboPanel_GetPlayerClass();
 	int              cnt = 0, i;
+
+	if (CG_LimboPanel_ForcedWeapon(CG_LimboPanel_GetTeam()) != WP_NONE)
+	{
+		return slotNumber == PRIMARY_SLOT ? 1 : 0;
+	}
 
 	if (slotNumber == PRIMARY_SLOT)
 	{
@@ -3843,6 +3893,11 @@ qboolean CG_LimboPanel_IsValidSelectedWeapon(int slot)
 
 	classInfo = CG_LimboPanel_GetPlayerClass();
 	weap      = CG_LimboPanel_GetSelectedWeapon(slot);
+
+	if (CG_LimboPanel_ForcedWeapon(CG_LimboPanel_GetTeam()) != WP_NONE)
+	{
+		return slot == PRIMARY_SLOT ? weap == CG_LimboPanel_ForcedWeapon(CG_LimboPanel_GetTeam()) : weap == WP_NONE;
+	}
 
 	if (slot == PRIMARY_SLOT)
 	{
@@ -3913,6 +3968,13 @@ void CG_LimboPanel_SetDefaultWeapon(int slot)
 		return;
 	}
 
+	if (CG_LimboPanel_ForcedWeapon(CG_LimboPanel_GetTeam()) != WP_NONE)
+	{
+		cgs.ccSelectedPrimaryWeapon = CG_LimboPanel_ForcedWeapon(CG_LimboPanel_GetTeam());
+		cgs.ccSelectedSecondaryWeapon = WP_NONE;
+		return;
+	}
+
 	if (slot == PRIMARY_SLOT)
 	{
 		cgs.ccSelectedPrimaryWeapon = classInfo->classPrimaryWeapons[0].weapon;
@@ -3929,6 +3991,12 @@ void CG_LimboPanel_SetDefaultWeapon(int slot)
  */
 weapon_t CG_LimboPanel_GetSelectedWeapon(int slot)
 {
+	weapon_t forced = CG_LimboPanel_ForcedWeapon(CG_LimboPanel_GetTeam());
+	if (forced != WP_NONE)
+	{
+		return slot == PRIMARY_SLOT ? forced : WP_NONE;
+	}
+
 	if (slot == PRIMARY_SLOT)
 	{
 		if (CG_LimboPanel_RealWeaponIsDisabled(cgs.ccSelectedPrimaryWeapon))
@@ -3989,6 +4057,11 @@ void CG_LimboPanel_RequestObjective(void)
  */
 void CG_LimboPanel_SetSelectedWeaponNum(int slot, weapon_t weapon)
 {
+	if (CG_LimboPanel_ForcedWeapon(CG_LimboPanel_GetTeam()) != WP_NONE)
+	{
+		return;
+	}
+
 	if (slot == PRIMARY_SLOT)
 	{
 		if (!CG_LimboPanel_RealWeaponIsDisabled(weapon))
@@ -4095,6 +4168,11 @@ qboolean CG_LimboPanel_RealWeaponIsDisabled(weapon_t weapon)
 	if (CG_LimboPanel_GetTeam() == TEAM_SPECTATOR)
 	{
 		return qtrue;
+	}
+
+	if (CG_LimboPanel_ForcedWeapon(CG_LimboPanel_GetTeam()) != WP_NONE)
+	{
+		return weapon != CG_LimboPanel_ForcedWeapon(CG_LimboPanel_GetTeam());
 	}
 
 	// never restrict normal weapons

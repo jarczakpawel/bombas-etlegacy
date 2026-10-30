@@ -3182,6 +3182,7 @@ void CG_LastWeaponUsed_f(void);
 void CG_NextWeaponInBank_f(void);
 void CG_PrevWeaponInBank_f(void);
 void CG_AltWeapon_f(void);
+void CG_BombasKnifeUpdate(void);
 void CG_NextWeapon_f(void);
 void CG_PrevWeapon_f(void);
 void CG_Weapon_f(void);
