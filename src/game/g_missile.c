@@ -761,7 +761,7 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 	if (ent->classname && !Q_stricmp(ent->classname, "bombas_throwing_knife") &&
 	    trace->entityNum != ENTITYNUM_NONE &&
 	    (trace->entityNum == ENTITYNUM_WORLD || trace->entityNum >= level.maxclients) &&
-	    !(trace->surfaceFlags & (SURF_SKY | SURF_NOIMPACT)) && !other->client)
+	    !(trace->surfaceFlags & SURF_SKY) && !other->client)
 	{
 		vec3_t origin, direction;
 		VectorScale(trace->plane.normal, -1.f, direction);
@@ -1261,7 +1261,9 @@ void G_RunMissile(gentity_t *ent)
 			return; // keep flying
 		}
 
-		if (tr.surfaceFlags & SURF_NOIMPACT) // never explode or bounce on sky
+		if ((tr.surfaceFlags & SURF_NOIMPACT) &&
+		    (!ent->classname || Q_stricmp(ent->classname, "bombas_throwing_knife") ||
+		     (tr.surfaceFlags & SURF_SKY))) // never explode or bounce on sky
 		{
 			G_FreeEntity(ent);
 			return;

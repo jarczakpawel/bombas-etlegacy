@@ -6328,6 +6328,10 @@ void CG_Bullet(int weapon, vec3_t end, int sourceEntityNum, int targetEntityNum)
 			int sourceContentType;
 			int destContentType;
 
+			if (cg.time < whizzLastTime)
+			{
+				whizzLastTime = -100000;
+			}
 			if (cg_bombasWhizz.integer && cg.bombasServerPingTime > 0 &&
 			    cg.time - cg.bombasServerPingTime < 2000 &&
 			    cg.snap->ps.pm_type == PM_NORMAL &&
@@ -6346,11 +6350,16 @@ void CG_Bullet(int weapon, vec3_t end, int sourceEntityNum, int targetEntityNum)
 					projection = DotProduct(ear, segment) / lengthSquared;
 					if (projection > .05f && projection < .95f)
 					{
+						trace_t path = { 0 };
 						VectorMA(start, projection, segment, nearest);
 						distanceSquared = DistanceSquared(nearest, cg.refdef.vieworg);
 						if (distanceSquared > 14.f * 14.f && distanceSquared < 112.f * 112.f &&
 						    DistanceSquared(start, nearest) > 42.f * 42.f &&
 						    DistanceSquared(end, nearest) > 42.f * 42.f)
+						{
+							CG_Trace(&path, cg.refdef.vieworg, NULL, NULL, nearest, cg.snap->ps.clientNum, MASK_SOLID);
+						}
+						if (!path.startsolid && path.fraction >= 1.f)
 						{
 							int near = distanceSquared < 52.f * 52.f;
 							int variant = (cg.time / 113 + sourceEntityNum * 7) % 6;
