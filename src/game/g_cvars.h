@@ -64,6 +64,7 @@ extern vmCvar_t g_gravity;
 extern vmCvar_t g_bombasMode;
 extern vmCvar_t g_bombasGrenadeKick;
 extern vmCvar_t g_bombasMarkerKick;
+extern vmCvar_t g_bombasSmokeKick;
 extern vmCvar_t g_bombasThrowingKnives;
 extern vmCvar_t g_bombasMolotovWalls;
 extern vmCvar_t g_poison; // Bombas ETPub-compatible poison damage per second

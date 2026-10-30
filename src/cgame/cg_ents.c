@@ -1897,9 +1897,16 @@ static void CG_Missile(centity_t *cent)
 		}
 	}
 
-	if ((cgs.sv_cheats || cg.demoPlayback) && cent->currentState.clientNum == cg.predictedPlayerState.clientNum)
+	if (s1->clientNum == cg.snap->ps.clientNum && s1->pos.trType != TR_STATIONARY &&
+	    ((cgs.sv_cheats || cg.demoPlayback) ||
+	     (cg_bombasMissileCam.integer && cg.snap->ps.pm_type == PM_NORMAL &&
+	      !(cg.snap->ps.pm_flags & PMF_FOLLOW) &&
+	      (s1->weapon == WP_PANZERFAUST || s1->weapon == WP_BAZOOKA ||
+	       s1->weapon == WP_MORTAR_SET || s1->weapon == WP_MORTAR2_SET ||
+	       s1->weapon == WP_MORTAR || s1->weapon == WP_MORTAR2 ||
+	       s1->weapon == WP_M7 || s1->weapon == WP_GPG40))))
 	{
-		if (cent->currentState.pos.trType != TR_STATIONARY)
+		if (!cg.latestMissile || cg.latestMissile->currentState.pos.trTime <= s1->pos.trTime)
 		{
 			cg.latestMissile = cent;
 		}

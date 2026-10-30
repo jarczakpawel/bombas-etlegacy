@@ -240,7 +240,7 @@ void CG_setDefaultHudValues(hudStucture_t *hud)
 	hud->limbotext          = CG_getComponent(4, 124, 278, 38, qtrue, 0, 0, 100.f, colorWhite, colorWhite, qfalse, HUD_Background, qfalse, HUD_Border, ITEM_TEXTSTYLE_SHADOWED, ITEM_ALIGN_LEFT, qfalse, 0.22f, 0, 0, 0, CG_DrawLimboMessage);
 	hud->followtext         = CG_getComponent(4, 124, 278, 24, qtrue, 0, 0, 100.f, colorWhite, colorWhite, qfalse, HUD_Background, qfalse, HUD_Border, ITEM_TEXTSTYLE_SHADOWED, ITEM_ALIGN_LEFT, qfalse, 0.22f, 0, 0, 0, CG_DrawFollow);
 	hud->demotext           = CG_getComponent(10, 0, 57, 10, qtrue, 0, 0, 100.f, (vec4_t) { 1, 0, 0, 0.5 }, colorWhite, qfalse, HUD_Background, qfalse, HUD_Border, ITEM_TEXTSTYLE_SHADOWED, ITEM_ALIGN_LEFT, qfalse, 0.22f, 0, 0, 0, CG_DrawDemoMessage);
-	hud->missilecamera      = CG_getComponent(4, 120, 160, 120, qtrue, 0, 0, 100.f, colorWhite, colorWhite, qfalse, HUD_Background, qfalse, HUD_Border, ITEM_TEXTSTYLE_SHADOWED, ITEM_ALIGN_LEFT, qfalse, 0.22f, 0, 0, 0, CG_DrawMissileCamera);
+	hud->missilecamera      = CG_getComponent(466, 100, 166, 104, qtrue, 0, 0, 100.f, colorWhite, colorWhite, qfalse, HUD_Background, qfalse, HUD_Border, ITEM_TEXTSTYLE_SHADOWED, ITEM_ALIGN_LEFT, qfalse, 0.22f, 0, 0, 0, CG_DrawMissileCamera);
 	hud->sprinttext         = CG_getComponent(20, SCREEN_HEIGHT - 96, 57, 14, qfalse, 1, 0, 100.f, colorWhite, colorWhite, qfalse, HUD_Background, qfalse, HUD_Border, ITEM_TEXTSTYLE_SHADOWED, ITEM_ALIGN_LEFT, qfalse, 0.25f, 0, 0, 0, CG_DrawPlayerSprint);
 	hud->breathtext         = CG_getComponent(20, SCREEN_HEIGHT - 96, 57, 14, qfalse, 1, 0, 100.f, colorWhite, colorWhite, qfalse, HUD_Background, qfalse, HUD_Border, ITEM_TEXTSTYLE_SHADOWED, ITEM_ALIGN_LEFT, qfalse, 0.25f, 0, 0, 0, CG_DrawPlayerBreath);
 	hud->weaponchargetext   = CG_getComponent(SCREEN_WIDTH - 16, SCREEN_HEIGHT - 96, 57, 14, qfalse, 1, 0, 100.f, colorWhite, colorWhite, qfalse, HUD_Background, qfalse, HUD_Border, ITEM_TEXTSTYLE_SHADOWED, ITEM_ALIGN_LEFT, qfalse, 0.25f, 0, 0, 0, CG_DrawWeaponCharge);
@@ -4728,7 +4728,7 @@ void CG_DrawActiveHud(void)
 	{
 		comp = hudData.active->components[i];
 
-		if ((comp && comp->visible && comp->draw) && !(showOnlyHudComponent != NULL && showOnlyHudComponent != comp))
+		if ((comp && comp->visible && comp->draw && comp->draw != CG_DrawMissileCamera) && !(showOnlyHudComponent != NULL && showOnlyHudComponent != comp))
 		{
 			comp->draw(comp);
 		}

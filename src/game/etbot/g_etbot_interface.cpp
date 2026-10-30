@@ -723,6 +723,94 @@ static void BombasBotRareMolotov(gentity_t *bot, usercmd_t &cmd)
     }
 }
 
+static void BombasBotRarePoison(gentity_t *bot, usercmd_t &cmd)
+{
+    struct Attempt
+    {
+        int nextCheck;
+        int nextUse;
+        int started;
+        int target;
+        int targetEnter;
+        int lastTime;
+    };
+    static Attempt attempts[MAX_CLIENTS] = {};
+    const int id = bot->s.number;
+    if (id < 0 || id >= level.maxclients || !bot->client) return;
+    Attempt &state = attempts[id];
+    const int now = level.time;
+    if (now < state.lastTime)
+    {
+        state = {};
+    }
+    state.lastTime = now;
+    if (g_poison.integer <= 0 || level.match_pause != PAUSE_NONE ||
+        bot->client->sess.playerType != PC_MEDIC || bot->health <= 0 ||
+        bot->client->ps.pm_type != PM_NORMAL ||
+        bot->client->ps.pm_flags & (PMF_LIMBO | PMF_TIME_LOCKPLAYER | PMF_LADDER) ||
+        BG_PlayerMounted(bot->client->ps.eFlags) ||
+        !COM_BitCheck(bot->client->ps.weapons, WP_MEDIC_SYRINGE) ||
+        bot->client->ps.ammoclip[GetWeaponTableData(WP_MEDIC_SYRINGE)->clipIndex] < 1)
+    {
+        state.started = 0;
+        return;
+    }
+    if (!state.started)
+    {
+        if (now < state.nextCheck || now < state.nextUse || !IS_VALID_WEAPON(cmd.weapon)) return;
+        const unsigned int roll = BombasBotHash((unsigned int)(now / 5000) * 677u ^ (unsigned int)id * 5303u);
+        state.nextCheck = now + 5000 + (int)(roll % 6000u);
+        const weaponTable_t *info = GetWeaponTableData(cmd.weapon);
+        if (!(info->type & (WEAPON_TYPE_SMG | WEAPON_TYPE_RIFLE | WEAPON_TYPE_PISTOL)) ||
+            bot->client->ps.weaponstate != WEAPON_READY) return;
+        const bool lowAmmo = bot->client->ps.ammoclip[info->clipIndex] <= 4 &&
+                             bot->client->ps.ammo[info->ammoIndex] <= 8;
+        if (roll % 100u >= (lowAmmo ? 15u : 3u)) return;
+        state.started = now;
+        state.target = -1;
+        state.nextUse = now + 90000 + (int)(roll % 90000u);
+    }
+    if (now - state.started > 1700)
+    {
+        state.started = 0;
+        return;
+    }
+    vec3_t start, end, forward;
+    trace_t trace;
+    VectorCopy(bot->client->ps.origin, start);
+    start[2] += bot->client->ps.viewheight;
+    AngleVectors(bot->client->ps.viewangles, forward, NULL, NULL);
+    VectorMA(start, 60.f, forward, end);
+    trap_Trace(&trace, start, NULL, NULL, end, id, MASK_SHOT);
+    if (trace.entityNum < 0 || trace.entityNum >= level.maxclients)
+    {
+        state.started = 0;
+        return;
+    }
+    gentity_t *target = &g_entities[trace.entityNum];
+    if (!target->inuse || !target->client || target->health <= 0 ||
+        target->client->ps.pm_type != PM_NORMAL ||
+        target->client->sess.sessionTeam == bot->client->sess.sessionTeam ||
+        target->client->bombasPoisonUntil > now ||
+        (state.target >= 0 && (state.target != trace.entityNum ||
+         state.targetEnter != target->client->pers.enterTime)))
+    {
+        state.started = 0;
+        return;
+    }
+    state.target = trace.entityNum;
+    state.targetEnter = target->client->pers.enterTime;
+    cmd.weapon = WP_MEDIC_SYRINGE;
+    cmd.buttons &= ~BUTTON_ATTACK;
+    cmd.wbuttons &= ~(WBUTTON_RELOAD | WBUTTON_ATTACK2);
+    if (bot->client->ps.weapon == WP_MEDIC_SYRINGE &&
+        bot->client->ps.weaponstate == WEAPON_READY && now - state.started >= 400)
+    {
+        cmd.buttons |= BUTTON_ATTACK;
+        state.started = 0;
+    }
+}
+
 // utils partly taken from id code
 #define WC_WEAPON_TIME_LEFT level.time - ps->classWeaponTime
 #define WC_SOLDIER_TIME     level.soldierChargeTime[team - TEAM_AXIS]
@@ -3278,6 +3366,7 @@ public:
 		}
         BombasAvoidFire(bot, cmd);
         BombasBotRareMolotov(bot, cmd);
+        BombasBotRarePoison(bot, cmd);
         // Low-probability, geometry-tested counterplay for a visible grenade
         // nearly exploding beside a bot. Standard Omni-bot dodging keeps
         // priority at larger distances. No dependence on any map waypoint.
