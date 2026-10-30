@@ -1366,9 +1366,9 @@ void CG_AddPlayerWeapon(refEntity_t *parent, playerState_t *ps, centity_t *cent)
 		centity_t *player = &cg_entities[clientNum];
 		if (player->bombasM1897PumpTime && cg.time >= player->bombasM1897PumpTime)
 		{
-			if (cg.time - player->bombasM1897PumpTime < 500 && weaponNum == WP_BOMBAS_M1897 && cg_weapons[weaponNum].reloadFastSound && !(cent->currentState.eFlags & EF_DEAD))
+			if (cg.time - player->bombasM1897PumpTime < 500 && weaponNum == WP_BOMBAS_M1897 && cg_weapons[weaponNum].pumpSound && !(cent->currentState.eFlags & EF_DEAD))
 			{
-				trap_S_StartSoundEx(NULL, clientNum, CHAN_AUTO, cg_weapons[weaponNum].reloadFastSound, SND_PAUSABLE);
+				trap_S_StartSoundEx(NULL, clientNum, CHAN_AUTO, cg_weapons[weaponNum].pumpSound, SND_PAUSABLE);
 			}
 			player->bombasM1897PumpTime = 0;
 		}

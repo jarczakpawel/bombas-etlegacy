@@ -1000,6 +1000,7 @@ typedef struct weaponInfo_s
 	sfxHandle_t overheatSound;
 	sfxHandle_t reloadSound;
 	sfxHandle_t reloadFastSound;
+	sfxHandle_t pumpSound;              ///< optional short cocking/pump sound on manual cycling
 
 	sfxHandle_t spinupSound;        ///< sound started when fire button goes down, and stepped on when the first fire event happens
 	sfxHandle_t spindownSound;      ///< sound called if the above is running but player doesn't follow through and fire

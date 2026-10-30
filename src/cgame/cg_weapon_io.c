@@ -1394,6 +1394,15 @@ static qboolean CG_RW_ParseClient(int handle, weaponInfo_t *weaponInfo)
 
 			weaponInfo->reloadFastSound = trap_S_RegisterSound(filename, qfalse);
 		}
+		else if (!Q_stricmp(token.string, "pumpSound"))
+		{
+			if (!PC_String_ParseNoAlloc(handle, filename, sizeof(filename)))
+			{
+				return CG_RW_ParseError(handle, "expected pumpSound filename");
+			}
+
+			weaponInfo->pumpSound = trap_S_RegisterSound(filename, qfalse);
+		}
 		else if (!Q_stricmp(token.string, "spinupSound"))
 		{
 			if (!PC_String_ParseNoAlloc(handle, filename, sizeof(filename)))
