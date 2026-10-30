@@ -763,6 +763,7 @@ static void CG_RegisterSounds(void)
 	{
 		cgs.media.bombasRicochetSounds[i] = trap_S_RegisterSound(va("sound/bombas/ricochet_%d.wav", i + 1), qfalse);
 	}
+	cgs.media.bombasKnifeWhooshSound = trap_S_RegisterSound("sound/bombas/knife_whoosh_6.wav", qfalse);
 
 	cgs.media.noAmmoSound      = trap_S_RegisterSound("sound/weapons/misc/fire_dry.wav", qfalse);
 	cgs.media.noFireUnderwater = trap_S_RegisterSound("sound/weapons/misc/fire_water.wav", qfalse);

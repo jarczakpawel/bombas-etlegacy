@@ -1866,6 +1866,7 @@ typedef struct
 	sfxHandle_t sfx_brassSound[BRASSSOUND_MAX][3][2];
 	sfxHandle_t sfx_rubbleBounce[3];
 	sfxHandle_t bombasRicochetSounds[4];
+	sfxHandle_t bombasKnifeWhooshSound;
 
 	sfxHandle_t gibSound;
 	sfxHandle_t landSound[FOOTSTEP_TOTAL];

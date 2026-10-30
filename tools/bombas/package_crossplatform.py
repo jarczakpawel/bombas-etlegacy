@@ -71,6 +71,11 @@ for number in range(1, 5):
         raise ValueError(f'Invalid ricochet PCM audio: {name}')
     files['sound/bombas/' + name] = data
 
+knife_whoosh = (Path(__file__).parent / 'assets' / 'knife_whoosh_6.wav').read_bytes()
+if knife_whoosh[:4] != b'RIFF' or knife_whoosh[8:12] != b'WAVE':
+    raise ValueError('Invalid mono knife whoosh audio')
+files['sound/bombas/knife_whoosh_6.wav'] = knife_whoosh
+
 files['bombas/client_manifest.json'] = (json.dumps({
     'version': version,
     'supported_platforms': list(required),

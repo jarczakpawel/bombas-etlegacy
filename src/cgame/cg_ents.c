@@ -1674,6 +1674,15 @@ static void CG_Missile(centity_t *cent)
 
 	// whoops, didn't mean to check it in with the missile flare
 
+	if (!cg.bombasMissileCamPass && cgs.media.bombasKnifeWhooshSound &&
+	    (s1->weapon == WP_KNIFE || s1->weapon == WP_KNIFE_KABAR) &&
+	    cg.time >= s1->pos.trTime && cg.time - s1->pos.trTime < 450 &&
+	    cent->miscTime != s1->pos.trTime)
+	{
+		trap_S_StartSoundVControl(cent->lerpOrigin, -1, CHAN_AUTO, cgs.media.bombasKnifeWhooshSound, 170);
+		cent->miscTime = s1->pos.trTime;
+	}
+
 	// add missile sound
 	if (!cg.bombasMissileCamPass && weapon->missileSound)
 	{
