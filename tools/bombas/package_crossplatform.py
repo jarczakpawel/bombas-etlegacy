@@ -64,6 +64,13 @@ for mode in ('near', 'far'):
             raise ValueError(f'Invalid 3D near miss audio: {path}')
         files['sound/bombas/' + name] = data
 
+for number in range(1, 5):
+    name = f'ricochet_{number}.wav'
+    data = (Path(__file__).parent / 'assets' / name).read_bytes()
+    if data[:4] != b'RIFF' or data[8:12] != b'WAVE':
+        raise ValueError(f'Invalid ricochet PCM audio: {name}')
+    files['sound/bombas/' + name] = data
+
 files['bombas/client_manifest.json'] = (json.dumps({
     'version': version,
     'supported_platforms': list(required),

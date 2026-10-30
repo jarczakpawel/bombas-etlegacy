@@ -759,6 +759,11 @@ static void CG_RegisterSounds(void)
 		speaker->noise = trap_S_RegisterSound(speaker->filename, qfalse);
 	}
 
+	for (i = 0; i < 4; i++)
+	{
+		cgs.media.bombasRicochetSounds[i] = trap_S_RegisterSound(va("sound/bombas/ricochet_%d.wav", i + 1), qfalse);
+	}
+
 	cgs.media.noAmmoSound      = trap_S_RegisterSound("sound/weapons/misc/fire_dry.wav", qfalse);
 	cgs.media.noFireUnderwater = trap_S_RegisterSound("sound/weapons/misc/fire_water.wav", qfalse);
 	cgs.media.selectSound      = trap_S_RegisterSound("sound/weapons/misc/change.wav", qfalse);
