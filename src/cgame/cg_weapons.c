@@ -6471,6 +6471,37 @@ no_bubble_trail:
 			VectorSubtract(vec3_origin, dir, dir);
 
 			CG_MissileHitWall(weapon, PS_FX_COMMON, trace.endpos, dir, trace.surfaceFlags, -1);
+
+			if (cg_bombasRicochet.integer && cg.bombasServerPingTime > 0 &&
+			    cg.time - cg.bombasServerPingTime < 2000 &&
+			    (trace.surfaceFlags & SURF_METAL) &&
+			    !(trace.surfaceFlags & (SURF_SKY | SURF_NOIMPACT | SURF_NODRAW)) &&
+			    trace.fraction < 1.f && !trace.startsolid &&
+			    trace.entityNum != ENTITYNUM_NONE && trace.entityNum >= cgs.maxclients &&
+			    DistanceSquared(trace.endpos, end) < 400.f &&
+			    DistanceSquared(trace.endpos, cg.refdef.vieworg) < 1200.f * 1200.f)
+			{
+				static int lastRicochetTime = -100000;
+				float incidence = DotProduct(dir, trace.plane.normal);
+
+				if (cg.time < lastRicochetTime)
+				{
+					lastRicochetTime = -100000;
+				}
+				if (incidence > 0.08f && incidence < 0.4f && cg.time - lastRicochetTime >= 260)
+				{
+					vec3_t reflected;
+					int variant = ((int)trace.endpos[0] * 3 + (int)trace.endpos[1] * 5 + cg.time / 109) & 3;
+					VectorScale(dir, -1.f, reflected);
+					VectorMA(reflected, 2.f * incidence, trace.plane.normal, reflected);
+					CG_AddSparks(trace.endpos, reflected, 135, 140, 1, 0.07f);
+					if (cgs.media.bombasRicochetSounds[variant])
+					{
+						trap_S_StartSoundVControl(trace.endpos, -1, CHAN_AUTO, cgs.media.bombasRicochetSounds[variant], 65);
+					}
+					lastRicochetTime = cg.time;
+				}
+			}
 		}
 	}
 }

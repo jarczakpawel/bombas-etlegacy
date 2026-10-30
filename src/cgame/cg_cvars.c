@@ -80,6 +80,7 @@ vmCvar_t cg_gun_y;
 vmCvar_t cg_gun_z;
 vmCvar_t cg_tracerChance;
 vmCvar_t cg_bombasWhizz;
+vmCvar_t cg_bombasRicochet;
 vmCvar_t cg_tracerWidth;
 vmCvar_t cg_tracerLength;
 vmCvar_t cg_tracerSpeed;
@@ -423,6 +424,7 @@ static cvarTable_t cvarTable[] =
 	{ &cg_showmiss,                           "cg_showmiss",                           "0",           0,                            0 },
 	{ &cg_tracerChance,                       "cg_tracerchance",                       "0.4",         CVAR_CHEAT,                   0 },
 	{ &cg_bombasWhizz,                        "cg_bombasWhizz",                       "1",           CVAR_ARCHIVE,                 0 },
+	{ &cg_bombasRicochet,                     "cg_bombasRicochet",                    "1",           CVAR_ARCHIVE,                 0 },
 	{ &cg_tracerWidth,                        "cg_tracerwidth",                        "0.8",         CVAR_CHEAT,                   0 },
 	{ &cg_tracerSpeed,                        "cg_tracerSpeed",                        "4500",        CVAR_CHEAT,                   0 },
 	{ &cg_tracerLength,                       "cg_tracerlength",                       "160",         CVAR_CHEAT,                   0 },
