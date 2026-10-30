@@ -759,7 +759,8 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 	}
 
 	if (ent->classname && !Q_stricmp(ent->classname, "bombas_throwing_knife") &&
-	    trace->entityNum != ENTITYNUM_NONE && trace->entityNum >= MAX_CLIENTS &&
+	    trace->entityNum != ENTITYNUM_NONE &&
+	    (trace->entityNum == ENTITYNUM_WORLD || trace->entityNum >= level.maxclients) &&
 	    !(trace->surfaceFlags & (SURF_SKY | SURF_NOIMPACT)) && !other->client)
 	{
 		vec3_t origin, direction;

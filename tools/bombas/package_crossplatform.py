@@ -55,6 +55,15 @@ for name in ('pt1_strt.wav', 'pt1_end.wav'):
         raise ValueError(f'Invalid sound asset: {path}')
     files['sound/movers/plats/' + name] = payload
 
+for mode in ('near', 'far'):
+    for number in range(1, 7):
+        name = f'bullet_{mode}_{number}.wav'
+        path = Path(__file__).parent / 'assets' / name
+        data = path.read_bytes()
+        if data[:4] != b'RIFF' or b'WAVE' not in data[:16]:
+            raise ValueError(f'Invalid 3D near miss audio: {path}')
+        files['sound/bombas/' + name] = data
+
 files['bombas/client_manifest.json'] = (json.dumps({
     'version': version,
     'supported_platforms': list(required),

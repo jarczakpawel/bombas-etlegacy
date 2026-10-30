@@ -79,6 +79,7 @@ extern vmCvar_t cg_weapBankCollisions;
 extern vmCvar_t cg_weapSwitchNoAmmoSounds;
 extern vmCvar_t cg_letterbox;
 extern vmCvar_t cg_tracerChance;
+extern vmCvar_t cg_bombasWhizz;
 extern vmCvar_t cg_tracerWidth;
 extern vmCvar_t cg_tracerLength;
 extern vmCvar_t cg_tracerSpeed;

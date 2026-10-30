@@ -6,7 +6,7 @@ permissions:
 on:
   workflow_dispatch:
   push:
-    branches: [main, feature/bombas-r87-m1897, feature/bombas-r88-knife-hud, feature/bombas-r89-team-loadout-ff-fixes, feature/bombas-r94-ppsh-stg44-bar, feature/bombas-r98-missile-camera, feature/bombas-r104-team-ping, feature/bombas-r105-three-fixes, feature/bombas-r106-knife-hud-corrections]
+    branches: [main, feature/bombas-r87-m1897, feature/bombas-r88-knife-hud, feature/bombas-r89-team-loadout-ff-fixes, feature/bombas-r94-ppsh-stg44-bar, feature/bombas-r98-missile-camera, feature/bombas-r104-team-ping, feature/bombas-r105-three-fixes, feature/bombas-r106-knife-hud-corrections, feature/bombas-r107-knife-whizz-grenade]
   pull_request:
     branches: [main]
 

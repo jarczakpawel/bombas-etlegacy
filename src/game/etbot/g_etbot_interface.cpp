@@ -1672,7 +1672,8 @@ static int _choosePriWeap(gentity_t *bot, int playerClass, int team)
 					ET_WP_FLAMETHROWER,
 					ET_WP_MORTAR,
 					ET_WP_THOMPSON,
-					ET_WP_BOMBAS_BAR
+					ET_WP_BOMBAS_BAR,
+					ET_WP_BOMBAS_M1897
 				};
 				int rInt = rand() % (sizeof(wpns) / sizeof(wpns[0]));
 				iSelected = wpns[rInt];
@@ -1688,7 +1689,8 @@ static int _choosePriWeap(gentity_t *bot, int playerClass, int team)
 					//92 // MORTAR2
 					ET_WP_MORTAR,
 					ET_WP_MP40,
-					ET_WP_BOMBAS_STG44
+					ET_WP_BOMBAS_STG44,
+					ET_WP_BOMBAS_M1897
 				};
 				int rInt = rand() % (sizeof(wpns) / sizeof(wpns[0]));
 				iSelected = wpns[rInt];
