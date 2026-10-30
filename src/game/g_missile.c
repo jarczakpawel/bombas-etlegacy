@@ -670,7 +670,12 @@ static void G_BombasEmbeddedKnifeThink(gentity_t *knife)
         VectorMA(normal, knife->pos2[i], axis[i], normal);
     }
     G_SetOrigin(knife, position);
-    vectoangles(normal, knife->s.apos.trBase);
+    if (level.time >= knife->s.apos.trTime + knife->s.apos.trDuration)
+    {
+        knife->s.apos.trType = TR_STATIONARY;
+        vectoangles(normal, knife->s.apos.trBase);
+        VectorClear(knife->s.apos.trDelta);
+    }
     trap_LinkEntity(knife);
     knife->nextthink = level.time + FRAMETIME;
 }
@@ -763,8 +768,9 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 	    (trace->entityNum == ENTITYNUM_WORLD || trace->entityNum >= level.maxclients) &&
 	    !(trace->surfaceFlags & SURF_SKY) && !other->client)
 	{
-		vec3_t origin, direction;
-		float projected;
+		vec3_t origin, direction, flightAngles, targetAngles;
+		int i;
+		BG_EvaluateTrajectory(&ent->s.apos, level.time, flightAngles, qtrue, ent->s.effect2Time);
 		BG_EvaluateTrajectoryDelta(&ent->s.pos, level.time, direction, qfalse, ent->s.effect2Time);
 		if (VectorNormalize(direction) < .001f)
 		{
@@ -772,13 +778,21 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 		}
 		VectorMA(direction, -.3f, trace->plane.normal, direction);
 		VectorNormalize(direction);
-		projected = -DotProduct(direction, trace->plane.normal);
-		VectorMA(trace->endpos, 9.96f * projected - 2.3f, trace->plane.normal, origin);
+		VectorMA(trace->endpos, -9.96f, direction, origin);
+		VectorMA(origin, -2.3f, trace->plane.normal, origin);
+		vectoangles(direction, targetAngles);
+		targetAngles[ROLL] = 0.f;
+		ent->s.apos.trType = TR_LINEAR_STOP;
+		ent->s.apos.trTime = level.time;
+		ent->s.apos.trDuration = 100;
+		VectorCopy(flightAngles, ent->s.apos.trBase);
+		for (i = 0; i < 3; i++)
+		{
+			ent->s.apos.trDelta[i] = 10.f * AngleSubtract(targetAngles[i], flightAngles[i]);
+		}
 		ent->s.eType = ET_GENERAL;
 		ent->s.weapon = WP_NONE;
 		ent->s.modelindex = G_ModelIndex("models/weapons2/knife_kbar/knife_throw.md3");
-		ent->s.apos.trType = TR_STATIONARY;
-		vectoangles(direction, ent->s.apos.trBase);
 		ent->r.contents = 0;
 		ent->clipmask = 0;
 		ent->think = G_FreeEntity;
