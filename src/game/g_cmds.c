@@ -4358,6 +4358,7 @@ qboolean G_BombasCanKickGrenade(gentity_t *player, gentity_t *missile)
          missile->s.weapon != WP_SMOKE_MARKER &&
          missile->s.weapon != WP_SMOKE_BOMB) ||
         (missile->classname && !Q_stricmp(missile->classname, "bombas_molotov")) ||
+        level.time - missile->spawnTime < 400 ||
         missile->nextthink < level.time + 420 ||
         missile->nextthink > level.time + 5500)
     {

@@ -2959,11 +2959,11 @@ void CG_AddViewWeapon(playerState_t *ps)
 			if (bombasKnifeHeldKey >= 0)
 			{
 				float windup = Com_Clamp(0.f, 1.f, (cg.time - bombasKnifeWindupTime) / 240.f);
-				gunoff[0] += 8.f * windup;
-				gunoff[1] -= 15.f * windup;
-				gunoff[2] -= 3.f * windup;
-				angles[PITCH] -= 5.f * windup;
-				angles[ROLL] -= 4.f * windup;
+				gunoff[0] -= 5.f * windup;
+				gunoff[1] -= 11.f * windup;
+				gunoff[2] -= 6.f * windup;
+				angles[PITCH] -= 85.f * windup;
+				angles[ROLL] -= 9.f * windup;
 			}
 			else if (cg.time >= bombasKnifeReleaseTime && cg.time - bombasKnifeReleaseTime < 400)
 			{
@@ -2971,11 +2971,11 @@ void CG_AddViewWeapon(playerState_t *ps)
 				if (elapsed < 100)
 				{
 					float release = 1.f - elapsed / 100.f;
-					gunoff[0] += 8.f * release;
-					gunoff[1] -= 15.f * release;
-					gunoff[2] -= 3.f * release;
-					angles[PITCH] -= 5.f * release;
-					angles[ROLL] -= 4.f * release;
+					gunoff[0] -= 5.f * release;
+					gunoff[1] -= 11.f * release;
+					gunoff[2] -= 6.f * release;
+					angles[PITCH] -= 85.f * release;
+					angles[ROLL] -= 9.f * release;
 				}
 				else if (elapsed < 210)
 				{
@@ -6319,13 +6319,68 @@ void CG_Bullet(int weapon, vec3_t end, int sourceEntityNum, int targetEntityNum)
 
 	// if the shooter is currently valid, calc a source point and possibly
 	// do trail effects
-	if (cg_tracerChance.value > 0 || cg_debugBullets.integer)
+	if (cg_tracerChance.value > 0 || cg_debugBullets.integer || cg_bombasWhizz.integer)
 	{
 		if (CG_CalcMuzzlePoint(sourceEntityNum, start))
 		{
+			static sfxHandle_t whizzSounds[2][6];
+			static int whizzLastTime = -100000;
 			int sourceContentType;
 			int destContentType;
 
+			if (cg.time < whizzLastTime)
+			{
+				whizzLastTime = -100000;
+			}
+			if (cg_bombasWhizz.integer && cg.bombasServerPingTime > 0 &&
+			    cg.time - cg.bombasServerPingTime < 2000 &&
+			    cg.snap->ps.pm_type == PM_NORMAL &&
+			    !(cg.snap->ps.pm_flags & PMF_LIMBO) &&
+			    sourceEntityNum != cg.snap->ps.clientNum &&
+			    targetEntityNum != cg.snap->ps.clientNum &&
+			    cg.time - whizzLastTime >= 180)
+			{
+				vec3_t segment, ear, nearest;
+				float lengthSquared, projection, distanceSquared;
+				VectorSubtract(end, start, segment);
+				lengthSquared = VectorLengthSquared(segment);
+				if (lengthSquared > 128.f * 128.f)
+				{
+					VectorSubtract(cg.refdef.vieworg, start, ear);
+					projection = DotProduct(ear, segment) / lengthSquared;
+					if (projection > .05f && projection < .95f)
+					{
+						trace_t path = { 0 };
+						VectorMA(start, projection, segment, nearest);
+						distanceSquared = DistanceSquared(nearest, cg.refdef.vieworg);
+						if (distanceSquared > 14.f * 14.f && distanceSquared < 112.f * 112.f &&
+						    DistanceSquared(start, nearest) > 42.f * 42.f &&
+						    DistanceSquared(end, nearest) > 42.f * 42.f)
+						{
+							CG_Trace(&path, cg.refdef.vieworg, NULL, NULL, nearest, cg.snap->ps.clientNum, MASK_SOLID);
+						}
+						if (!path.startsolid && path.fraction >= 1.f)
+						{
+							int near = distanceSquared < 52.f * 52.f;
+							int variant = (cg.time / 113 + sourceEntityNum * 7) % 6;
+							if (!whizzSounds[near][variant])
+							{
+								whizzSounds[near][variant] = trap_S_RegisterSound(
+								    va("sound/bombas/bullet_%s_%d.wav", near ? "near" : "far", variant + 1), qfalse);
+							}
+							if (whizzSounds[near][variant])
+							{
+								trap_S_StartSound(nearest, -1, CHAN_AUTO, whizzSounds[near][variant]);
+								whizzLastTime = cg.time;
+							}
+						}
+					}
+				}
+			}
+			if (cg_tracerChance.value <= 0 && !cg_debugBullets.integer)
+			{
+				goto no_bubble_trail;
+			}
 			sourceContentType = CG_PointContents(start, 0);
 			destContentType   = CG_PointContents(end, 0);
 
@@ -6379,7 +6434,7 @@ void CG_Bullet(int weapon, vec3_t end, int sourceEntityNum, int targetEntityNum)
 			}
 		}
 	}
-
+no_bubble_trail:
 	VectorSubtract(end, start, dir);
 	VectorNormalizeFast(dir);
 
