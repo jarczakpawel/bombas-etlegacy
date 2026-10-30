@@ -4833,6 +4833,18 @@ void CG_DrawActive()
 		CG_NoiseGenerator();
 		CG_DrawHudEditor();
 	}
+
+	if (!cg.showGameView && !cg.editingHud && cg.latestMissile && cg_draw2D.integer)
+	{
+		hudComponent_t *camera;
+		CG_SetHud();
+		CG_ComputeComponentPositions(CG_GetActiveHUD());
+		camera = &CG_GetActiveHUD()->missilecamera;
+		if (camera->visible)
+		{
+			CG_DrawMissileCamera(camera);
+		}
+	}
 }
 
 void CG_DrawMissileCamera(hudComponent_t *comp)
@@ -4841,31 +4853,45 @@ void CG_DrawMissileCamera(hudComponent_t *comp)
 	refdef_t  refdef;
 	vec3_t    delta, angles;
 	centity_t *cent;
+	trace_t   trace;
+	qboolean  liveCam;
+	refdef_t  *mainRefdef;
 
 	if (!cg.latestMissile || cgs.matchPaused)
 	{
 		return;
 	}
 
-	// Save out the old render info so we don't kill the LOD system here
-	trap_R_SaveViewParms();
+	liveCam = !cg.demoPlayback && !cgs.sv_cheats;
+	if (liveCam && (!cg_bombasMissileCam.integer || cg.snap->ps.pm_type != PM_NORMAL ||
+	                cg.snap->ps.pm_flags & PMF_FOLLOW))
+	{
+		return;
+	}
 
 	cent = cg.latestMissile;
+	BG_EvaluateTrajectoryDelta(&cent->currentState.pos, cg.time, delta, qtrue, 0);
+	if (VectorNormalize(delta) == 0.f)
+	{
+		return;
+	}
 
-	memset(&refdef, 0, sizeof(refdef_t));
+	// Save out the old render info so we don't kill the LOD system here
+	mainRefdef = cg.refdef_current;
+	trap_R_SaveViewParms();
+
+	memset(&refdef, 0, sizeof(refdef));
 	memcpy(refdef.areamask, cg.snap->areamask, sizeof(refdef.areamask));
+	AxisClear(refdef.viewaxis);
 
 	x = comp->location.x;
 	y = comp->location.y;
 	w = comp->location.w;
 	h = comp->location.h;
-
 	CG_AdjustFrom640(&x, &y, &w, &h);
-	memset(&refdef, 0, sizeof(refdef));
-	AxisClear(refdef.viewaxis);
 
-	refdef.fov_x  = cg.refdef_current->fov_x;
-	refdef.fov_y  = cg.refdef_current->fov_y;
+	refdef.fov_x  = 90.f;
+	refdef.fov_y  = 2.f * RAD2DEG(atanf(tanf(DEG2RAD(refdef.fov_x * .5f)) * h / w));
 	refdef.x      = x;
 	refdef.y      = y;
 	refdef.width  = w;
@@ -4873,21 +4899,28 @@ void CG_DrawMissileCamera(hudComponent_t *comp)
 	refdef.time   = cg.time;
 
 	VectorCopy(cent->lerpOrigin, refdef.vieworg);
-
-	BG_EvaluateTrajectoryDelta(&cent->currentState.pos, cg.time, delta, qtrue, 0);
 	vectoangles(delta, angles);
 	AnglesToAxis(angles, refdef.viewaxis);
 
+	if (liveCam)
+	{
+		vec3_t target;
+		VectorMA(refdef.vieworg, -56.f, delta, target);
+		target[2] += 18.f;
+		CG_Trace(&trace, refdef.vieworg, NULL, NULL, target, cent->currentState.number, MASK_SOLID);
+		VectorCopy(trace.endpos, refdef.vieworg);
+	}
+
 	cg.refdef_current = &refdef;
-
 	trap_R_ClearScene();
-
 	CG_SetupFrustum();
 	CG_DrawSkyBoxPortal(qfalse);
 
 	if (!cg.hyperspace)
 	{
+		cg.bombasMissileCamPass = qtrue;
 		CG_AddPacketEntities();
+		cg.bombasMissileCamPass = qfalse;
 		CG_AddMarks();
 		CG_AddParticles();
 		CG_AddLocalEntities(qfalse);
@@ -4900,16 +4933,23 @@ void CG_DrawMissileCamera(hudComponent_t *comp)
 		CG_DrawClientCoronas();
 	}
 
-	refdef.time = cg.time;
 	trap_SetClientLerpOrigin(refdef.vieworg[0], refdef.vieworg[1], refdef.vieworg[2]);
-
 	trap_R_RenderScene(&refdef);
 
-	cg.refdef_current = &cg.refdef;
-
+	cg.refdef_current = mainRefdef;
+	CG_SetupFrustum();
 	// grain shader
 	//CG_DrawPic( rect->x, rect->y, rect->w, rect->h, cgs.media.tv_grain);
 
 	// Reset the view parameters
+	trap_SetClientLerpOrigin(mainRefdef->vieworg[0], mainRefdef->vieworg[1], mainRefdef->vieworg[2]);
 	trap_R_RestoreViewParms();
+
+	if (liveCam)
+	{
+		CG_DrawRect(comp->location.x, comp->location.y, comp->location.w, comp->location.h, 1.f, colorWhite);
+		CG_Text_Paint_Ext(comp->location.x + 5, comp->location.y + 12, .16f, .16f,
+		                  colorWhite, "MISSILE CAM", 0, 0, ITEM_TEXTSTYLE_SHADOWED,
+		                  &cgs.media.limboFont1);
+	}
 }
