@@ -1030,6 +1030,7 @@ static int WM_TeamScoreboard(int x, int y, team_t team, float fade, int maxrows,
 	float      tempx, tempy;
 	int        i;
 	int        count = 0;
+	int        pingCount = 0;
 	int        width = INFO_TOTAL_WIDTH;
 	int        row_height;
 	qboolean   livesleft = qfalse;
@@ -1099,7 +1100,7 @@ static int WM_TeamScoreboard(int x, int y, team_t team, float fade, int maxrows,
 			{
 				s = va("%s [%d] (%d %s)", CG_TranslateString(teamText), cg.teamScores[team - 1], cg.teamPlayers[team], cg.teamPlayers[team] < 2 ? CG_TranslateString("PLAYER") : CG_TranslateString("PLAYERS"));
 
-				s2 = va("%s: %.0f±%.0fms", CG_TranslateString("AVG PING"), (double)cg.teamPingMean[team], (double)cg.teamPingSd[team]);
+				s2 = cg.teamPingMean[team] < 0.f ? va("%s: -", CG_TranslateString("AVG PING")) : va("%s: %.0f±%.0fms", CG_TranslateString("AVG PING"), (double)cg.teamPingMean[team], (double)cg.teamPingSd[team]);
 				CG_Text_Paint_Ext(x + width - 5 - CG_Text_Width_Ext(s2, 0.19f, 0, FONT_HEADER), y + 13, 0.19f, 0.19f, SB_text, s2, 0, 0, 0, FONT_HEADER);
 			}
 
@@ -1181,16 +1182,20 @@ static int WM_TeamScoreboard(int x, int y, team_t team, float fade, int maxrows,
 		}
 
 		cg.teamPlayers[team]++;
-		cg.teamPingMean[team] += cg.scores[i].ping;
+		if (!(cg.scores[i].scoreflags & 2) && cg.scores[i].ping >= 0 && cg.scores[i].ping < 999)
+		{
+			cg.teamPingMean[team] += cg.scores[i].ping;
+			pingCount++;
+		}
 	}
 
-	if (cg.teamPlayers[team] != 0)
+	if (pingCount)
 	{
-		cg.teamPingMean[team] = cg.teamPingMean[team] / cg.teamPlayers[team];
+		cg.teamPingMean[team] /= pingCount;
 
 		for (i = 0; i < cg.numScores; i++)
 		{
-			if (team != cgs.clientinfo[cg.scores[i].client].team)
+			if (team != cgs.clientinfo[cg.scores[i].client].team || (cg.scores[i].scoreflags & 2) || cg.scores[i].ping < 0 || cg.scores[i].ping >= 999)
 			{
 				continue;
 			}
@@ -1198,7 +1203,11 @@ static int WM_TeamScoreboard(int x, int y, team_t team, float fade, int maxrows,
 			cg.teamPingSd[team] += pow(cg.scores[i].ping - cg.teamPingMean[team], 2);
 		}
 
-		cg.teamPingSd[team] = sqrtf(cg.teamPingSd[team] / cg.teamPlayers[team]);
+		cg.teamPingSd[team] = sqrtf(cg.teamPingSd[team] / pingCount);
+	}
+	else
+	{
+		cg.teamPingMean[team] = -1.f;
 	}
 
 	row_height = use_mini_chars ? 12 : 16;
