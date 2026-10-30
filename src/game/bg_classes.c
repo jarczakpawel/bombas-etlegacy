@@ -56,7 +56,6 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{
 				{ WP_LUGER,                SK_LIGHT_WEAPONS,                            0,                         24,  8   },
 				{ WP_AKIMBO_LUGER,         SK_LIGHT_WEAPONS,                            SK_LIGHT_WEAPONS_AKIMBO,   48,  8   },
-				{ WP_MP40,                 SK_HEAVY_WEAPONS,                            SK_SOLDIER_SMG,            60,  30  }, // soldier start with x2 ammo
 			},
 			{ WP_GRENADE_LAUNCHER,     SK_LIGHT_WEAPONS,                            0,                         4,   0   },
 			{
@@ -192,7 +191,6 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{
 				{ WP_COLT,                 SK_LIGHT_WEAPONS,                            0,                         24,  8   },
 				{ WP_AKIMBO_COLT,          SK_LIGHT_WEAPONS,                            SK_LIGHT_WEAPONS_AKIMBO,   48,  8   },
-				{ WP_THOMPSON,             SK_HEAVY_WEAPONS,                            SK_SOLDIER_SMG,            60,  30  }, // soldier start with x2 ammo
 			},
 			{ WP_GRENADE_PINEAPPLE,    SK_LIGHT_WEAPONS,                            0,                         4,   0   },
 			{
