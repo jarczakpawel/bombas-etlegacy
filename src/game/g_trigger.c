@@ -928,7 +928,7 @@ qboolean G_IsAllowedAmmo(gentity_t *ent)
 		return qfalse;
 	}
 
-	if (!AddMagicAmmo(ent, 0))
+	if (!AddMagicAmmo(ent, 0) && !G_BombasKnifeAmmo(ent, qfalse))
 	{
 		return qfalse;
 	}
@@ -1008,7 +1008,9 @@ void ammo_touch(gentity_t *self, gentity_t *other, trace_t *trace)
 	for (i = 0; i < count; i++)
 	{
 		// self->damage contains the amount of ammo to add
-		if (AddMagicAmmo(touchClients[i], self->damage))
+		qboolean ammoAdded = AddMagicAmmo(touchClients[i], self->damage);
+		qboolean knifeAdded = G_BombasKnifeAmmo(touchClients[i], qtrue);
+		if (ammoAdded || knifeAdded)
 		{
 			// add the ammo pack event (to get sound, etc.)
 			G_AddPredictableEvent(touchClients[i], EV_ITEM_PICKUP, ITEM_WEAPON_MAGICAMMO);
