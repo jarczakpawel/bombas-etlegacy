@@ -34,6 +34,8 @@
 
 #include "cg_local.h"
 
+char *Binding_FromName(const char *cvar);
+
 /**
  * @brief CG_TrimLeftPixels
  * @param[in,out] instr
@@ -398,6 +400,7 @@ void CG_DrawCursorhint(hudComponent_t *comp)
 	case HINT_NO_DARM_FIRST_REVIVE:
 		cg.lastUsedHintIcon = cgs.media.doorLockHintShader;
 		break;
+	case HINT_BOMBAS_KICK:
 	case HINT_ACTIVATE:
 	case HINT_BAD_USER:
 	default:
@@ -456,6 +459,16 @@ void CG_DrawCursorhint(hudComponent_t *comp)
 	CG_DrawPic(comp->location.x - halfscale, comp->location.y - halfscale, comp->location.w + scale, comp->location.h + scale, cg.lastUsedHintIcon);
 
 	trap_R_SetColor(NULL);
+	if (cg.cursorHintIcon == HINT_BOMBAS_KICK)
+	{
+		const char *key = Binding_FromName("+activate");
+		const char *label = va("KICK [%s]", key);
+		float width = CG_Text_Width_Ext(label, .18f, 0, &cgs.media.limboFont1);
+		CG_Text_Paint_Ext(comp->location.x + comp->location.w * .5f - width * .5f,
+		                  comp->location.y + comp->location.h + 13.f,
+		                  .18f, .18f, colorWhite, label, 0, 0, ITEM_TEXTSTYLE_SHADOWED, &cgs.media.limboFont1);
+	}
+
 }
 
 /**

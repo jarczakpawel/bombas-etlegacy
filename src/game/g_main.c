@@ -510,6 +510,28 @@ void G_CheckForCursorHints(gentity_t *ent)
 	hintType = ps->serverCursorHint = HINT_NONE;
 	hintVal  = ps->serverCursorHintVal = 0;
 
+	if (!zooming && g_bombasGrenadeKick.integer && ent->health > 0)
+	{
+		int found[64], count, i;
+		vec3_t mins, maxs;
+
+		for (i = 0; i < 3; i++)
+		{
+			mins[i] = ps->origin[i] - (i == 2 ? 62.f : 86.f);
+			maxs[i] = ps->origin[i] + (i == 2 ? 62.f : 86.f);
+		}
+		count = trap_EntitiesInBox(mins, maxs, found, ARRAY_LEN(found));
+		for (i = 0; i < count; i++)
+		{
+			gentity_t *missile = &g_entities[found[i]];
+			if (missile->s.eType == ET_MISSILE && G_BombasCanKickGrenade(ent, missile))
+			{
+				ps->serverCursorHint = HINT_BOMBAS_KICK;
+				return;
+			}
+		}
+	}
+
 	// force showing achievement for a few time
 	if (ent->lastTaskAchievedTime + 250 > level.time)
 	{
