@@ -3347,6 +3347,21 @@ static void CG_ServerCommand(void)
 	long       hash = 0;
 
 	cmd = CG_Argv(0);
+	if (!Q_stricmp(cmd, "bombas_knives"))
+	{
+		if (trap_Argc() == 3)
+		{
+			int remaining = Q_atoi(CG_Argv(1));
+			int spawnCount = Q_atoi(CG_Argv(2));
+			if (remaining >= 0 && remaining <= 3 && spawnCount >= 0)
+			{
+				cg.bombasKnivesHudEnabled = qtrue;
+				cg.bombasKnivesRemaining = remaining;
+				cg.bombasKnivesSpawnCount = spawnCount;
+			}
+		}
+		return;
+	}
 	if (!Q_stricmp(cmd, "bombas_evt") || !Q_stricmp(cmd, "bombas_voice"))
 	{
 		CG_BombasEvent_Receive();

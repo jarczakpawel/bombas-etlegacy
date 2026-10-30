@@ -6,7 +6,7 @@ permissions:
 on:
   workflow_dispatch:
   push:
-    branches: [main, feature/bombas-r87-m1897]
+    branches: [main, feature/bombas-r87-m1897, feature/bombas-r88-knife-hud]
   pull_request:
     branches: [main]
 

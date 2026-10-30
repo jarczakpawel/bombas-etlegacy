@@ -3228,6 +3228,7 @@ void ClientSpawn(gentity_t *ent, qboolean revived, qboolean teamChange, qboolean
 	client->bombasPanzerReadyTime = 0;
 	// Update per-life revive compatibility counters once spawn type is known.
 	G_LegacyRevive_OnClientSpawn(ent, revived);
+	G_BombasKnifeHudSpawn(ent);
 
 	// breathbar
 	client->ps.stats[STAT_AIRLEFT] = HOLDBREATHTIME;

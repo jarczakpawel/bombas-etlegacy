@@ -1441,6 +1441,20 @@ void CG_DrawAmmoCount(hudComponent_t *comp)
 		return;
 	}
 
+	// R88: show the actual server-accepted MOUSE2 throws in the regular
+	// weapon-ammo HUD slot when knife is selected, leaving all other HUDs
+	// and slash melee behavior unchanged. Do not guess on other ET servers.
+	if (cg.bombasKnivesHudEnabled &&
+	    (cg.predictedPlayerState.weapon == WP_KNIFE ||
+	     cg.predictedPlayerState.weapon == WP_KNIFE_KABAR))
+	{
+		int remaining = cg.bombasKnivesSpawnCount == cg.snap->ps.persistant[PERS_SPAWN_COUNT]
+		                ? cg.bombasKnivesRemaining : 3;
+		Com_sprintf(buffer, sizeof(buffer), "%i/3", remaining);
+		CG_DrawCompText(comp, buffer, remaining ? *color : colorRed, comp->styleText, &cgs.media.limboFont1);
+		return;
+	}
+
 	// Draw ammo
 	CG_PlayerAmmoValue(&value, &value2, &value3, NULL, (comp->style & 1) ? &color : NULL);
 

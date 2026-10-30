@@ -1896,6 +1896,7 @@ void G_CalcRank(gclient_t *client);
 void Cmd_Activate_f(gentity_t *ent);
 qboolean G_BombasCanKickGrenade(gentity_t *player, gentity_t *missile);
 void G_BombasThrowKnife(gentity_t *ent);
+void G_BombasKnifeHudSpawn(gentity_t *ent);
 qboolean G_BombasCorpseDrag(gentity_t *ent);
 void Cmd_Activate2_f(gentity_t *ent);
 void G_BombasClassStealRelease(gentity_t *ent);

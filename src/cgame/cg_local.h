@@ -1163,6 +1163,12 @@ typedef struct
 	int xp;
 	int xpChangeTime;
 
+	// R88: native reliable per-life remaining throws, only enabled when the
+	// Bombas server explicitly sends the state (never on unrelated servers).
+	qboolean bombasKnivesHudEnabled;
+	int bombasKnivesRemaining;
+	int bombasKnivesSpawnCount;
+
 	qboolean demoPlayback;
 	demoPlayInfo_t *demoinfo;
 	version_t demoVersion;

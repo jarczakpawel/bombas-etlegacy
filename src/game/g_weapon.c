@@ -65,6 +65,29 @@ static int bombasKnifeShots[MAX_CLIENTS];
 static int bombasKnifeLastShot[MAX_CLIENTS];
 static qboolean bombasKnifeKnown[MAX_CLIENTS];
 
+// Do not use playerState/ammo fields used by stock knives: reliable command
+// carries the authoritative per-life throw counter, no network protocol change.
+void G_BombasKnifeHudSpawn(gentity_t *ent)
+{
+    int id;
+    if (!ent || !ent->client || !g_bombasThrowingKnives.integer ||
+        (ent->r.svFlags & SVF_BOT) || ent->client->sess.sessionTeam == TEAM_SPECTATOR)
+    {
+        return;
+    }
+    id = ent->s.number;
+    if (id < 0 || id >= level.maxclients)
+    {
+        return;
+    }
+    bombasKnifeKnown[id] = qtrue;
+    bombasKnifeSpawnCount[id] = ent->client->ps.persistant[PERS_SPAWN_COUNT];
+    bombasKnifeConnectTime[id] = ent->client->pers.connectTime;
+    bombasKnifeShots[id] = 0;
+    bombasKnifeLastShot[id] = -100000;
+    trap_SendServerCommand(id, va("bombas_knives 3 %d", bombasKnifeSpawnCount[id]));
+}
+
 void G_BombasThrowKnife(gentity_t *ent)
 {
     int id;
@@ -145,6 +168,7 @@ void G_BombasThrowKnife(gentity_t *ent)
 
     bombasKnifeShots[id]++;
     bombasKnifeLastShot[id] = level.time;
+    trap_SendServerCommand(id, va("bombas_knives %d %d", 3 - bombasKnifeShots[id], bombasKnifeSpawnCount[id]));
     G_LogPrintf("Bombas_ThrowKnife: %d %d %d\n", id, bolt->s.number, bombasKnifeShots[id]);
 }
 
