@@ -737,6 +737,7 @@ typedef enum
 	W_PART_5,
 	W_PART_6,
 	W_PART_7,
+	W_PART_8,
 	W_MAX_PARTS
 } barrelType_t;
 
@@ -1143,7 +1144,7 @@ typedef struct
 } demoBackwardsCompat_t;
 
 #define MAX_WEAP_BANKS_MP          10
-#define MAX_WEAPS_IN_BANK_MP       18
+#define MAX_WEAPS_IN_BANK_MP       19
 #define MAX_WEAP_BANK_SWITCH_ORDER 4
 
 #define MAX_BACKUP_STATES (CMD_BACKUP_ETL + 2)

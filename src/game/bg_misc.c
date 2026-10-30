@@ -221,6 +221,7 @@ weaponTable_t weaponTable[WP_NUM_WEAPONS] =
 	{ WP_BAZOOKA,              ITEM_WEAPON_BAZOOKA,               TEAM_ALLIES, SK_HEAVY_WEAPONS,                            WP_NONE,                WP_PANZERFAUST,          WP_NONE,  WP_BAZOOKA,           WP_BAZOOKA,           400,   0,     0,          400,         300,         WEAPON_TYPE_PANZER,                        WEAPON_FIRING_MODE_ONE_SHOT,                                 WEAPON_ATTRIBUT_CHARGE_TIME | WEAPON_ATTRIBUT_SHAKE,                                                                                                         0,      0,     "BAZOOKA",             WS_BAZOOKA,         qtrue,  qfalse, 4,      1,   1,      0,         DELAY_HW,      2000,        0,          0,                0,      0,       0,               250,            250,             0,                0,              32000.f,  { 14, 10, 0 },    0,                 { 0, 0 },       { 0, 0 },      "rocket",          "bazooka",               SK_SOLDIER_PROJECTILE_STAMINA,    {1, .66f},      MOD_BAZOOKA,              MOD_BAZOOKA              },  // WP_BAZOOKA               // 53
 	{ WP_MP34,                 ITEM_WEAPON_MP34,                  TEAM_AXIS,   SK_LIGHT_WEAPONS,                            WP_NONE,                WP_STEN,                 WP_NONE,  WP_MP34,              WP_MP34,              14,    200,   0.6f,       0,           0,           WEAPON_TYPE_SMG,                           WEAPON_FIRING_MODE_AUTOMATIC,                                WEAPON_ATTRIBUT_FAST_RELOAD | WEAPON_ATTRIBUT_SILENCED | WEAPON_ATTRIBUT_KEEP_DESGUISE | WEAPON_ATTRIBUT_FALL_OFF,                                           0,      0,     "MP 34",               WS_MP34,            qtrue,  qtrue,  96,     1,   32,     3100,      DELAY_LOW,     150,         0,          15,               1200,   540,     2000,            250,            250,             0,                0,              0,        { 14, 6, -4 },    0,                 { 0, 0 },       { 0, 0 },      "",                "mp34",                  0,                                {1, 1},         MOD_MP34,                 MOD_MP34                 },  // WP_MP34                  // 54   // Solothurn S1-100 SMG
 	{ WP_AIRSTRIKE,            ITEM_WEAPON_AIRSTRIKE,             TEAM_FREE,   SK_SIGNALS,                                  WP_NONE,                WP_NONE,                 WP_NONE,  WP_AIRSTRIKE,         WP_AIRSTRIKE,         400,   0,     0,          400,         400,         WEAPON_TYPE_NONE,                          WEAPON_FIRING_MODE_NONE,                                     WEAPON_ATTRIBUT_CHARGE_TIME | WEAPON_ATTRIBUT_SHAKE,                                                                                                         0,      0,     "",                    WS_AIRSTRIKE,       qfalse, qfalse, 1,      0,   1,      0,         50,            1000,        0,          0,                0,      0,       0,               250,            250,             0,                0,              0,        { 14, 6, -4 },    0,                 { 0, 0 },       { 0, 0 },      "air strike",      "airstrike",             SK_FIELDOPS_FIRE_SUPPORT_STAMINA, {1, .66f},      MOD_AIRSTRIKE,            MOD_AIRSTRIKE            },  // WP_AIRSTRIKE             // 55   // airstrike shell bomb
+	{ WP_BOMBAS_M1897, ITEM_WEAPON_BOMBAS_M1897, TEAM_FREE, SK_LIGHT_WEAPONS, WP_NONE, WP_NONE, WP_NONE, WP_BOMBAS_M1897, WP_BOMBAS_M1897, 9, 650, 0.6f, 0, 0, WEAPON_TYPE_SHOTGUN, WEAPON_FIRING_MODE_SEMI_AUTOMATIC, WEAPON_ATTRIBUT_FALL_OFF, 0, 0, "WINCHESTER M1897", WS_BOMBAS_M1897, qtrue, qtrue, 24, 1, 8, 650, DELAY_LOW, 900, 0, 50, 0, 0, 0, 250, 250, 0, 0, 0, {14, 6, -4}, 180, {.9f, .6f}, {.5f, .3f}, "", "m97", 0, {1, 1}, MOD_BOMBAS_M1897, MOD_BOMBAS_M1897 },
 };
 
 /**
@@ -336,6 +337,7 @@ modTable_t modTable[MOD_NUM_MODS] =
     // A genuine Nitro Solvent death gets a separate obituary, server MOD,
     // and appropriate grenade icon. Keep flamethrower stats/kill points.
     { MOD_BOMBAS_NITRO,                       WP_GRENADE_PINEAPPLE,    qfalse,    qfalse,     WEAPON_CLASS_FOR_MOD_NO,        qtrue,       "was burned by",             "'s Nitro Solvent",              "set himself on fire with Nitro Solvent",  NULL,                                     "MOD_BOMBAS_NITRO",                      SK_HEAVY_WEAPONS,                            3.f,             3.f,             {0.f, 0.f, 0.f, 0.f}, qfalse,      "nitro solvent",       3,            WS_FLAMETHROWER    },
+	{ MOD_BOMBAS_M1897, WP_BOMBAS_M1897, qfalse, qfalse, WEAPON_CLASS_FOR_MOD_NO, qfalse, "was killed by", "'s Winchester M1897", "killed himself", NULL, "MOD_BOMBAS_M1897", SK_LIGHT_WEAPONS, 3.f, 0.f, {0.f, 0.f, 0.f, 0.f}, qfalse, "shotgun", 2, WS_BOMBAS_M1897 },
 };
 
 // *INDENT-ON*
@@ -2409,6 +2411,22 @@ gitem_t bg_itemlist[] =
 		IT_TEAM,
 		WP_NONE,
 		PW_BLUEFLAG,
+#ifdef CGAMEDLL
+		{ 0, { 0 }, { 0 } },
+#endif
+	},
+	{
+		ITEM_WEAPON_BOMBAS_M1897,
+		"weapon_bombas_m1897",
+		"sound/misc/w_pkup.wav",
+		{ "models/weapons2/m97/m97_pickup.md3", "models/weapons2/m97/v_m97.md3", 0 },
+		"models/weapons2/m97/icon.tga",
+		"icons/ammo2",
+		"Winchester M1897",
+		8,
+		IT_WEAPON,
+		WP_BOMBAS_M1897,
+		PW_NONE,
 #ifdef CGAMEDLL
 		{ 0, { 0 }, { 0 } },
 #endif
@@ -4648,7 +4666,8 @@ const weap_ws_t aWeaponInfo[WS_MAX] =
 	{ qtrue,  "SGRN", "Scp.Garand" },  // 24 WS_GARAND
 	{ qtrue,  "SK43", "Scp.K43"    },  // 25 WS_K43
 	{ qtrue,  "MP34", "MP 34"      },  // 26 WS_MP34
-	{ qfalse, "SRNG", "Syringe"    }   // 27 WS_SYRINGE
+	{ qfalse, "SRNG", "Syringe"    },  // 27 WS_SYRINGE
+	{ qfalse, "M189", "Winchester" }   // 28 WS_BOMBAS_M1897
 };
 
 /**

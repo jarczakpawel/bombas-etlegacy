@@ -3745,6 +3745,31 @@ gentity_t *Bullet_Fire(gentity_t *ent)
 	return NULL;
 }
 
+gentity_t *Weapon_BombasM1897(gentity_t *ent)
+{
+	vec3_t end;
+	float spread = GetWeaponTableData(ent->s.weapon)->spread;
+	int i;
+
+	if (ent->client->ps.groundEntityNum == ENTITYNUM_NONE)
+	{
+		spread *= 1.5f;
+	}
+
+	G_HistoricalTraceBegin(ent);
+	G_TempTraceIgnoreBodies();
+	for (i = 0; i < 8; i++)
+	{
+		VectorMA(muzzleTrace, MAX_TRACE, forward, end);
+		VectorMA(end, crandom() * spread, right, end);
+		VectorMA(end, crandom() * spread, up, end);
+		Bullet_Fire_Extended(ent, ent, muzzleTrace, end, forward, GetWeaponTableData(ent->s.weapon)->damage, qtrue, MOD_BOMBAS_M1897);
+	}
+	G_ResetTempTraceIgnoreEnts();
+	G_HistoricalTraceEnd(ent);
+	return NULL;
+}
+
 /**
  * @brief A modified Bullet_Fire with more parameters.
  *
@@ -4518,6 +4543,7 @@ weapFireTable_t weapFireTable[] =
     { WP_BAZOOKA,              weapon_antitank_fire,        G_ExplodeMissile,           NULL,               ET_MISSILE,            EF_NONE,                    SVF_BROADCAST,                CONTENTS_NONE,   TR_LINEAR,      MISSILE_PRESTEP_TIME,  { { 0, 0, 0 }, { 0, 0, 0 } },                    { { 0, 0, 0 }, { 0, 0, 0 } },                    MASK_MISSILESHOT, 20000,     4,       0,     0,        999,         },
     { WP_MP34,                 Bullet_Fire,                 NULL,                       NULL,               ET_GENERAL,            EF_NONE,                    SVF_NONE,                     CONTENTS_NONE,   TR_LINEAR,      0,                     { { 0, 0, 0 }, { 0, 0, 0 } },                    { { 0, 0, 0 }, { 0, 0, 0 } },                    MASK_SHOT,        0,         0,       0,     0,        0,           },
     { WP_AIRSTRIKE,            NULL,                        NULL,                       NULL,               ET_MISSILE,            EF_NONE,                    SVF_BROADCAST,                CONTENTS_NONE,   TR_LINEAR,      MISSILE_PRESTEP_TIME,  { { 0, 0, 0 }, { 0, 0, 0 } },                    { { 0, 0, 0 }, { 0, 0, 0 } },                    MASK_MISSILESHOT, 0,         2,       0,     0,        20,          },
+    { WP_BOMBAS_M1897,         Weapon_BombasM1897,           NULL,                       NULL,               ET_GENERAL,            EF_NONE,                    SVF_NONE,                     CONTENTS_NONE,   TR_LINEAR,      0,                     { { 0, 0, 0 }, { 0, 0, 0 } },                    { { 0, 0, 0 }, { 0, 0, 0 } },                    MASK_SHOT,        0,         0,       0,     0,        0,           },
 };
 // *INDENT-ON*
 

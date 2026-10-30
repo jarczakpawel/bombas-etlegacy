@@ -911,8 +911,9 @@ typedef enum
 	WP_BAZOOKA,                ///< 53	Allied panzerfaust
 	WP_MP34,                   ///< 54	Axis Sten alternative
 	WP_AIRSTRIKE,              ///< 55
+	WP_BOMBAS_M1897,          ///< 56
 
-	WP_NUM_WEAPONS             ///< 56
+	WP_NUM_WEAPONS             ///< 57
 	///< NOTE: this cannot be larger than 64 for AI/player weapons!
 } weapon_t;
 
@@ -1145,6 +1146,7 @@ typedef enum
     // Bombas: distinguish burning Nitro Solvent from the real flamethrower.
     // Append only; never renumber existing ET means-of-death values.
     MOD_BOMBAS_NITRO,
+	MOD_BOMBAS_M1897,
 
 	MOD_NUM_MODS
 
@@ -1172,7 +1174,8 @@ typedef enum weaponType_s
 	WEAPON_TYPE_SCOPED    = BIT(11),
 	WEAPON_TYPE_SETTABLE  = BIT(12),
 	WEAPON_TYPE_SET       = BIT(13),
-	WEAPON_TYPE_BEAM      = BIT(14)         ///< flamethrower
+	WEAPON_TYPE_BEAM      = BIT(14),        ///< flamethrower
+	WEAPON_TYPE_SHOTGUN   = BIT(15)
 
 } weaponType_t;
 
@@ -1866,6 +1869,7 @@ typedef enum extWeaponStats_e
 	WS_K43,            ///< 25
 	WS_MP34,           ///< 26
 	WS_SYRINGE,        ///< 27
+	WS_BOMBAS_M1897,   ///< 28
 
 	WS_MAX
 } extWeaponStats_t;
@@ -2009,6 +2013,7 @@ typedef enum item_s
 	ITEM_AMMO_30CAL_LARGE,
 	ITEM_RED_FLAG,
 	ITEM_BLUE_FLAG,
+	ITEM_WEAPON_BOMBAS_M1897,
 	ITEM_MAX_ITEMS,
 
 } item_t;

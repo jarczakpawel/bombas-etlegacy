@@ -2543,6 +2543,22 @@ static void PM_BeginWeaponReload(weapon_t weapon)
 		return;
 	}
 
+	if (weapon == WP_BOMBAS_M1897)
+	{
+		if (pm->ps->ammoclip[weapon] == 0)
+		{
+			PM_StartWeaponAnim(WEAP_ALTSWITCHFROM);
+			pm->ps->weaponTime += 2000;
+		}
+		else
+		{
+			PM_StartWeaponAnim(WEAP_RELOAD1);
+			pm->ps->weaponTime += 400;
+		}
+		pm->ps->weaponstate = WEAPON_RELOADING;
+		return;
+	}
+
 	// easier check now that the animation system handles the specifics
 	if (!(GetWeaponTableData(weapon)->firingMode & WEAPON_FIRING_MODE_THROWABLE))
 	{
@@ -2864,6 +2880,43 @@ static void PM_ReloadClip(weapon_t weapon)
  */
 static void PM_FinishWeaponReload(void)
 {
+	if (pm->ps->weapon == WP_BOMBAS_M1897)
+	{
+		int anim = pm->ps->weapAnim & ~ANIM_TOGGLEBIT;
+		int clip = pm->ps->ammoclip[WP_BOMBAS_M1897];
+		int reserve = pm->ps->ammo[WP_BOMBAS_M1897];
+
+		if (anim == WEAP_RELOAD1)
+		{
+			PM_StartWeaponAnim(WEAP_RELOAD2);
+			pm->ps->weaponTime += BG_IsSkillAvailable(pm->skill, SK_LIGHT_WEAPONS, SK_LIGHT_WEAPONS_FASTER_RELOAD) ? 600 : 900;
+			return;
+		}
+		if (anim == WEAP_RELOAD2 || anim == WEAP_ALTSWITCHFROM)
+		{
+			if (reserve > 0 && clip < GetWeaponTableData(WP_BOMBAS_M1897)->maxClip)
+			{
+				pm->ps->ammoclip[WP_BOMBAS_M1897]++;
+				pm->ps->ammo[WP_BOMBAS_M1897]--;
+				PM_AddEvent(EV_FILL_CLIP);
+				clip++;
+				reserve--;
+			}
+			if (reserve > 0 && clip < GetWeaponTableData(WP_BOMBAS_M1897)->maxClip && !(pm->cmd.buttons & BUTTON_ATTACK))
+			{
+				PM_StartWeaponAnim(WEAP_RELOAD2);
+				pm->ps->weaponTime += BG_IsSkillAvailable(pm->skill, SK_LIGHT_WEAPONS, SK_LIGHT_WEAPONS_FASTER_RELOAD) ? 600 : 900;
+				return;
+			}
+			PM_StartWeaponAnim(WEAP_RELOAD3);
+			pm->ps->weaponTime += 550;
+			return;
+		}
+		pm->ps->weaponstate = WEAPON_READY;
+		PM_StartWeaponAnim(PM_IdleAnimForWeapon(pm->ps->weapon));
+		return;
+	}
+
 	PM_ReloadClip(pm->ps->weapon);            // move ammo into clip
 	pm->ps->weaponstate = WEAPON_READY;     // ready to fire
 	PM_StartWeaponAnim(PM_IdleAnimForWeapon(pm->ps->weapon));
@@ -3645,6 +3698,10 @@ static void PM_Weapon(void)
 	{
 	case WEAPON_RELOADING:
 		PM_FinishWeaponReload();
+		if (pm->ps->weaponstate == WEAPON_RELOADING)
+		{
+			return;
+		}
 		break;
 	case WEAPON_DROPPING:
 	case WEAPON_DROPPING_TORELOAD:

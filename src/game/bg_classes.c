@@ -51,6 +51,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 				{ WP_FLAMETHROWER,         SK_HEAVY_WEAPONS,                            0,                         200, 0   },
 				{ WP_PANZERFAUST,          SK_HEAVY_WEAPONS,                            0,                         4,   0   },
 				{ WP_MORTAR2,              SK_HEAVY_WEAPONS,                            0,                         15,  0   },
+				{ WP_BOMBAS_M1897, SK_LIGHT_WEAPONS, 0, 16, 8 },
 			},
 			{
 				{ WP_LUGER,                SK_LIGHT_WEAPONS,                            0,                         24,  8   },
@@ -179,6 +180,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 				{ WP_FLAMETHROWER,         SK_HEAVY_WEAPONS,                            0,                         200, 0   },
 				{ WP_BAZOOKA,              SK_HEAVY_WEAPONS,                            0,                         4,   0   },
 				{ WP_MORTAR,               SK_HEAVY_WEAPONS,                            0,                         15,  0   },
+				{ WP_BOMBAS_M1897, SK_LIGHT_WEAPONS, 0, 16, 8 },
 			},
 			{
 				{ WP_COLT,                 SK_LIGHT_WEAPONS,                            0,                         24,  8   },

@@ -195,7 +195,7 @@ static qboolean CG_ParseWeaponConfig(const char *filename, weaponInfo_t *wi)
 
 			if (atoi(token))
 			{
-				wi->weapAnimations[i].moveSpeed |= (1 << W_MAX_PARTS);      // set the bit one higher than can be set by the barrel bits
+				wi->weapAnimations[i].moveSpeed |= (1 << W_PART_8);      // set the bit one higher than can be set by the barrel bits
 
 			}
 
