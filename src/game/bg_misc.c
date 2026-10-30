@@ -222,6 +222,9 @@ weaponTable_t weaponTable[WP_NUM_WEAPONS] =
 	{ WP_MP34,                 ITEM_WEAPON_MP34,                  TEAM_AXIS,   SK_LIGHT_WEAPONS,                            WP_NONE,                WP_STEN,                 WP_NONE,  WP_MP34,              WP_MP34,              14,    200,   0.6f,       0,           0,           WEAPON_TYPE_SMG,                           WEAPON_FIRING_MODE_AUTOMATIC,                                WEAPON_ATTRIBUT_FAST_RELOAD | WEAPON_ATTRIBUT_SILENCED | WEAPON_ATTRIBUT_KEEP_DESGUISE | WEAPON_ATTRIBUT_FALL_OFF,                                           0,      0,     "MP 34",               WS_MP34,            qtrue,  qtrue,  96,     1,   32,     3100,      DELAY_LOW,     150,         0,          15,               1200,   540,     2000,            250,            250,             0,                0,              0,        { 14, 6, -4 },    0,                 { 0, 0 },       { 0, 0 },      "",                "mp34",                  0,                                {1, 1},         MOD_MP34,                 MOD_MP34                 },  // WP_MP34                  // 54   // Solothurn S1-100 SMG
 	{ WP_AIRSTRIKE,            ITEM_WEAPON_AIRSTRIKE,             TEAM_FREE,   SK_SIGNALS,                                  WP_NONE,                WP_NONE,                 WP_NONE,  WP_AIRSTRIKE,         WP_AIRSTRIKE,         400,   0,     0,          400,         400,         WEAPON_TYPE_NONE,                          WEAPON_FIRING_MODE_NONE,                                     WEAPON_ATTRIBUT_CHARGE_TIME | WEAPON_ATTRIBUT_SHAKE,                                                                                                         0,      0,     "",                    WS_AIRSTRIKE,       qfalse, qfalse, 1,      0,   1,      0,         50,            1000,        0,          0,                0,      0,       0,               250,            250,             0,                0,              0,        { 14, 6, -4 },    0,                 { 0, 0 },       { 0, 0 },      "air strike",      "airstrike",             SK_FIELDOPS_FIRE_SUPPORT_STAMINA, {1, .66f},      MOD_AIRSTRIKE,            MOD_AIRSTRIKE            },  // WP_AIRSTRIKE             // 55   // airstrike shell bomb
 	{ WP_BOMBAS_M1897, ITEM_WEAPON_BOMBAS_M1897, TEAM_FREE, SK_LIGHT_WEAPONS, WP_NONE, WP_NONE, WP_NONE, WP_BOMBAS_M1897, WP_BOMBAS_M1897, 9, 650, 0.6f, 0, 0, WEAPON_TYPE_SHOTGUN, WEAPON_FIRING_MODE_SEMI_AUTOMATIC, WEAPON_ATTRIBUT_FALL_OFF, 0, 0, "WINCHESTER M1897", WS_BOMBAS_M1897, qtrue, qtrue, 24, 1, 8, 650, DELAY_LOW, 900, 0, 50, 0, 0, 0, 250, 250, 0, 0, 0, {14, 6, -4}, 180, {.9f, .6f}, {.5f, .3f}, "", "m97", 0, {1, 1}, MOD_BOMBAS_M1897, MOD_BOMBAS_M1897 },
+	{ WP_BOMBAS_PPSH41,             ITEM_WEAPON_BOMBAS_PPSH41,              TEAM_FREE, SK_LIGHT_WEAPONS,                            WP_NONE,                WP_NONE,                 WP_NONE,  WP_BOMBAS_PPSH41,          WP_BOMBAS_PPSH41,          18,    400,   0.6f,       0,           0,           WEAPON_TYPE_SMG,                           WEAPON_FIRING_MODE_AUTOMATIC,                                WEAPON_ATTRIBUT_FAST_RELOAD | WEAPON_ATTRIBUT_FALL_OFF,                                                                                                      0,      0,     "PPSh-41",            WS_BOMBAS_PPSH41,        qtrue,  qtrue,  144,     1,   48,     2400,      DELAY_LOW,     150,         0,          15,               0,      0,       0,               250,            250,             0,                0,              0,        { 14, 6, -4 },    0,                 { 0, 0 },       { 0, 0 },      "",                "ppsh",              0,                                {1, 1},         MOD_BOMBAS_PPSH41,             MOD_BOMBAS_PPSH41             },
+	{ WP_BOMBAS_STG44,                 ITEM_WEAPON_BOMBAS_STG44,                  TEAM_AXIS,   SK_LIGHT_WEAPONS,                            WP_NONE,                WP_NONE,             WP_NONE,  WP_BOMBAS_STG44,              WP_BOMBAS_STG44,              18,    400,   0.6f,       0,           0,           WEAPON_TYPE_SMG,                           WEAPON_FIRING_MODE_AUTOMATIC,                                WEAPON_ATTRIBUT_FAST_RELOAD | WEAPON_ATTRIBUT_FALL_OFF,                                                                                                      0,      0,     "StG44",               WS_BOMBAS_STG44,            qtrue,  qtrue,  90,     1,   30,     2400,      DELAY_LOW,     150,         0,          15,               0,      0,       0,               250,            250,             0,                0,              0,        { 14, 6, -4 },    0,                 { 0, 0 },       { 0, 0 },      "",                "stg44",                  0,                                {1, 1},         MOD_BOMBAS_STG44,                 MOD_BOMBAS_STG44                 },
+	{ WP_BOMBAS_BAR,                 ITEM_WEAPON_BOMBAS_BAR,                  TEAM_ALLIES,   SK_LIGHT_WEAPONS,                            WP_NONE,          WP_NONE,                 WP_NONE,  WP_BOMBAS_BAR,              WP_BOMBAS_BAR,              16,    500,   0.6f,       0,           0,           WEAPON_TYPE_RIFLE,    WEAPON_FIRING_MODE_AUTOMATIC,                                WEAPON_ATTRIBUT_FAST_RELOAD | WEAPON_ATTRIBUT_FALL_OFF,                                                                                                      0,      0,     "BAR M1918",               WS_BOMBAS_BAR,            qtrue,  qtrue,  60,     1,   20,     2000,      DELAY_LOW,     100,         0,          100,              0,      0,       0,               250,            250,             50,               50,             0,        { 14, 6, -4 },    0,                 { 0, 0 },       { 0, 0 },      "",                "bar",                  0,                                {1, 1},         MOD_BOMBAS_BAR,                 MOD_BOMBAS_BAR                 },
 };
 
 /**
@@ -338,6 +341,9 @@ modTable_t modTable[MOD_NUM_MODS] =
     // and appropriate grenade icon. Keep flamethrower stats/kill points.
     { MOD_BOMBAS_NITRO,                       WP_GRENADE_PINEAPPLE,    qfalse,    qfalse,     WEAPON_CLASS_FOR_MOD_NO,        qtrue,       "was burned by",             "'s Nitro Solvent",              "set himself on fire with Nitro Solvent",  NULL,                                     "MOD_BOMBAS_NITRO",                      SK_HEAVY_WEAPONS,                            3.f,             3.f,             {0.f, 0.f, 0.f, 0.f}, qfalse,      "nitro solvent",       3,            WS_FLAMETHROWER    },
 	{ MOD_BOMBAS_M1897, WP_BOMBAS_M1897, qfalse, qfalse, WEAPON_CLASS_FOR_MOD_NO, qfalse, "was killed by", "'s Winchester M1897", "killed himself", NULL, "MOD_BOMBAS_M1897", SK_LIGHT_WEAPONS, 3.f, 0.f, {0.f, 0.f, 0.f, 0.f}, qfalse, "shotgun", 2, WS_BOMBAS_M1897 },
+	{ MOD_BOMBAS_PPSH41,                           WP_BOMBAS_PPSH41,             qtrue,     qfalse,     WEAPON_CLASS_FOR_MOD_NO,        qfalse,      "was killed by",             "'s PPSh-41",                    "killed himself",                        NULL,                                     "MOD_BOMBAS_PPSH41",                           SK_LIGHT_WEAPONS,                            3.f,             0.f,             {5.f, 3.f, 3.f, 3.f}, qtrue,       "",                    2,            WS_BOMBAS_PPSH41        },
+	{ MOD_BOMBAS_STG44,                               WP_BOMBAS_STG44,                 qtrue,     qfalse,     WEAPON_CLASS_FOR_MOD_NO,        qfalse,      "was killed by",             "'s StG44",                       "killed himself",                        NULL,                                     "MOD_BOMBAS_STG44",                               SK_LIGHT_WEAPONS,                            3.f,             0.f,             {5.f, 3.f, 3.f, 3.f}, qtrue,       "",                    2,            WS_BOMBAS_STG44            },
+	{ MOD_BOMBAS_BAR,                               WP_BOMBAS_BAR,                 qtrue,     qfalse,     WEAPON_CLASS_FOR_MOD_NO,        qfalse,      "was killed by",             "'s BAR",                       "killed himself",                        NULL,                                     "MOD_BOMBAS_BAR",                               SK_LIGHT_WEAPONS,                            3.f,             0.f,             {5.f, 3.f, 3.f, 3.f}, qtrue,       "",                    2,            WS_BOMBAS_BAR            },
 };
 
 // *INDENT-ON*
@@ -2426,6 +2432,54 @@ gitem_t bg_itemlist[] =
 		8,
 		IT_WEAPON,
 		WP_BOMBAS_M1897,
+		PW_NONE,
+#ifdef CGAMEDLL
+		{ 0, { 0 }, { 0 } },
+#endif
+	},
+	{
+		ITEM_WEAPON_BOMBAS_PPSH41,
+		"weapon_wp_bombas_ppsh41",
+		"sound/misc/w_pkup.wav",
+		{ "models/weapons2/ppsh/thompson.mdc", "models/weapons2/ppsh/v_thompson.mdc", 0 },
+		"icons/iconw_ppsh_1",
+		"icons/ammo2",
+		"PPSh-41",
+		48,
+		IT_WEAPON,
+		WP_BOMBAS_PPSH41,
+		PW_NONE,
+#ifdef CGAMEDLL
+		{ 0, { 0 }, { 0 } },
+#endif
+	},
+	{
+		ITEM_WEAPON_BOMBAS_STG44,
+		"weapon_wp_bombas_stg44",
+		"sound/misc/w_pkup.wav",
+		{ "models/weapons2/StG44/mp44_pickup.md3", "models/weapons2/StG44/v_mp44.md3", 0 },
+		"icons/iconw_stg44",
+		"icons/ammo2",
+		"StG44",
+		30,
+		IT_WEAPON,
+		WP_BOMBAS_STG44,
+		PW_NONE,
+#ifdef CGAMEDLL
+		{ 0, { 0 }, { 0 } },
+#endif
+	},
+	{
+		ITEM_WEAPON_BOMBAS_BAR,
+		"weapon_wp_bombas_bar",
+		"sound/misc/w_pkup.wav",
+		{ "models/weapons2/bar/bar_pickup.md3", "models/weapons2/bar/v_bar.md3", 0 },
+		"icons/iconw_bar",
+		"icons/ammo2",
+		"BAR M1918",
+		20,
+		IT_WEAPON,
+		WP_BOMBAS_BAR,
 		PW_NONE,
 #ifdef CGAMEDLL
 		{ 0, { 0 }, { 0 } },
@@ -4667,7 +4721,10 @@ const weap_ws_t aWeaponInfo[WS_MAX] =
 	{ qtrue,  "SK43", "Scp.K43"    },  // 25 WS_K43
 	{ qtrue,  "MP34", "MP 34"      },  // 26 WS_MP34
 	{ qfalse, "SRNG", "Syringe"    },  // 27 WS_SYRINGE
-	{ qfalse, "M189", "Winchester" }   // 28 WS_BOMBAS_M1897
+	{ qfalse, "M189", "Winchester" },
+	{ qtrue, "PPSH", "PPSh-41" },
+	{ qtrue, "STG4", "StG44" },
+	{ qtrue, "BAR", "BAR M1918" }
 };
 
 /**
