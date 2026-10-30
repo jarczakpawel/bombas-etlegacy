@@ -6,7 +6,9 @@ permissions:
 on:
   workflow_dispatch:
   push:
-    branches: [main, "feature/bombas-r84-throwing-knives"]
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   linux:
