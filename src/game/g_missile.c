@@ -804,11 +804,11 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 		targetAngles[ROLL] = 0.f;
 		ent->s.apos.trType = TR_LINEAR_STOP;
 		ent->s.apos.trTime = level.time;
-		ent->s.apos.trDuration = 100;
+		ent->s.apos.trDuration = 200;
 		VectorCopy(flightAngles, ent->s.apos.trBase);
 		for (i = 0; i < 3; i++)
 		{
-			ent->s.apos.trDelta[i] = 10.f * AngleSubtract(targetAngles[i], flightAngles[i]);
+			ent->s.apos.trDelta[i] = 5.f * AngleSubtract(targetAngles[i], flightAngles[i]);
 		}
 		ent->s.eType = ET_GENERAL;
 		ent->s.weapon = WP_NONE;
