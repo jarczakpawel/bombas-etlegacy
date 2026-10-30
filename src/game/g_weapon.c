@@ -159,9 +159,13 @@ void G_BombasThrowKnife(gentity_t *ent)
     eye[2] += ent->client->ps.viewheight;
     VectorMA(eye, 24.f, direction, start);
     trap_Trace(&tr, eye, NULL, NULL, start, ent->s.number, MASK_SHOT);
-    if (tr.startsolid || tr.allsolid || tr.fraction < 1.f)
+    if (tr.startsolid || tr.allsolid)
     {
         return;
+    }
+    if (tr.fraction < 1.f)
+    {
+        VectorMA(eye, MAX(0.f, 24.f * tr.fraction - 2.f), direction, start);
     }
 
     bolt = G_Spawn();
