@@ -2902,7 +2902,7 @@ static void PM_FinishWeaponReload(void)
 				clip++;
 				reserve--;
 			}
-			if (reserve > 0 && clip < GetWeaponTableData(WP_BOMBAS_M1897)->maxClip && !(pm->cmd.buttons & BUTTON_ATTACK))
+			if (reserve > 0 && clip < GetWeaponTableData(WP_BOMBAS_M1897)->maxClip && !(pm->cmd.buttons & BUTTON_ATTACK) && pm->cmd.weapon == WP_BOMBAS_M1897)
 			{
 				PM_StartWeaponAnim(WEAP_RELOAD2);
 				pm->ps->weaponTime += BG_IsSkillAvailable(pm->skill, SK_LIGHT_WEAPONS, SK_LIGHT_WEAPONS_FASTER_RELOAD) ? 600 : 900;

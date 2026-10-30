@@ -46,6 +46,7 @@ vec3_t        muzzleTrace;  // used in G_Damage from g_combat.c
 
 // forward dec
 gentity_t *Bullet_Fire(gentity_t *ent);
+static void Bullet_Fire_Extended_Internal(gentity_t *source, gentity_t *attacker, vec3_t start, vec3_t end, vec3_t dir, int damage, qboolean distance_falloff, meansOfDeath_t mod, qboolean emitImpact);
 void Bullet_Fire_Extended(gentity_t *source, gentity_t *attacker, vec3_t start, vec3_t end, vec3_t dir, int damage, qboolean distance_falloff, meansOfDeath_t mod);
 
 /**
@@ -3763,7 +3764,7 @@ gentity_t *Weapon_BombasM1897(gentity_t *ent)
 		VectorMA(muzzleTrace, MAX_TRACE, forward, end);
 		VectorMA(end, crandom() * spread, right, end);
 		VectorMA(end, crandom() * spread, up, end);
-		Bullet_Fire_Extended(ent, ent, muzzleTrace, end, forward, GetWeaponTableData(ent->s.weapon)->damage, qtrue, MOD_BOMBAS_M1897);
+		Bullet_Fire_Extended_Internal(ent, ent, muzzleTrace, end, forward, GetWeaponTableData(ent->s.weapon)->damage, qtrue, MOD_BOMBAS_M1897, i < 3);
 	}
 	G_ResetTempTraceIgnoreEnts();
 	G_HistoricalTraceEnd(ent);
@@ -3786,6 +3787,11 @@ gentity_t *Weapon_BombasM1897(gentity_t *ent)
  * @return
  */
 void Bullet_Fire_Extended(gentity_t *source, gentity_t *attacker, vec3_t start, vec3_t end, vec3_t dir, int damage, qboolean distance_falloff, meansOfDeath_t mod)
+{
+	Bullet_Fire_Extended_Internal(source, attacker, start, end, dir, damage, distance_falloff, mod, qtrue);
+}
+
+static void Bullet_Fire_Extended_Internal(gentity_t *source, gentity_t *attacker, vec3_t start, vec3_t end, vec3_t dir, int damage, qboolean distance_falloff, meansOfDeath_t mod, qboolean emitImpact)
 {
 	trace_t   tr;
 	gentity_t *tent;
@@ -3888,12 +3894,16 @@ void Bullet_Fire_Extended(gentity_t *source, gentity_t *attacker, vec3_t start, 
 			{
 				// start new bullet at position this hit the bmodel and continue to the end position (ignoring shot-through bmodel in next trace)
 				// spread = 0 as this is an extension of an already spread shot
-				/*return*/ Bullet_Fire_Extended(traceEnt, attacker, tr.endpos, end, dir, damage, distance_falloff, mod);
+				/*return*/ Bullet_Fire_Extended_Internal(traceEnt, attacker, tr.endpos, end, dir, damage, distance_falloff, mod, emitImpact);
 			}
 		}
 	}
 
 	// send bullet impact
+	if (!emitImpact)
+	{
+		return;
+	}
 	tent                    = G_TempEntity(impactPos, EV_BULLET);
 	tent->s.otherEntityNum2 = traceEnt->s.number;
 	tent->s.weapon          = GetMODTableData(mod)->weaponIcon;

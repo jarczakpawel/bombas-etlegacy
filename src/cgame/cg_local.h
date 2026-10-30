@@ -392,6 +392,7 @@ typedef struct centity_s
 	qboolean currentValid;          ///< true if cg.frame holds this entity
 
 	int firedTime;            ///< move to playerEntity?
+	int bombasM1897PumpTime;
 	int overheatTime;
 	int previousEvent;
 	int previousEventSequence;

@@ -1361,6 +1361,19 @@ void CG_AddPlayerWeapon(refEntity_t *parent, playerState_t *ps, centity_t *cent)
 	qboolean        shouldDrawMuzzleFlash       = (cg_muzzleFlash.integer && !(cg_muzzleFlash.integer == 2 && ps && isSelfFirstPerson));
 	qboolean        shouldDrawMuzzleFlashDlight = ((shouldDrawMuzzleFlash && cg_muzzleFlashDlight.integer == 0) || (cg_muzzleFlashDlight.integer > 1 && !(cg_muzzleFlashDlight.integer == 3 && ps && isSelfFirstPerson)));
 
+	if (clientNum >= 0 && clientNum < MAX_CLIENTS)
+	{
+		centity_t *player = &cg_entities[clientNum];
+		if (player->bombasM1897PumpTime && cg.time >= player->bombasM1897PumpTime)
+		{
+			if (cg.time - player->bombasM1897PumpTime < 500 && weaponNum == WP_BOMBAS_M1897 && cg_weapons[weaponNum].reloadFastSound && !(cent->currentState.eFlags & EF_DEAD))
+			{
+				trap_S_StartSoundEx(NULL, clientNum, CHAN_AUTO, cg_weapons[weaponNum].reloadFastSound, SND_PAUSABLE);
+			}
+			player->bombasM1897PumpTime = 0;
+		}
+	}
+
 	// {{{ early returns
 	// don't draw any weapons when the binocs are up
 	if (cent->currentState.eFlags & EF_ZOOMING)
@@ -3625,7 +3638,7 @@ void CG_AltWeapon_f(void)
 	}
 
 	// don't allow another reloading when we're still swapping to prevent animation breaking
-	if (cg.snap->ps.weaponstate == WEAPON_RELOADING)
+	if (cg.snap->ps.weaponstate == WEAPON_RELOADING && cg.snap->ps.weapon != WP_BOMBAS_M1897)
 	{
 		return;
 	}
@@ -4086,7 +4099,7 @@ qboolean CG_CheckCanSwitch(void)
 	//              the delay for the current reload is already in effect, so you'd lose
 	//              the reload time twice.  (the first pause for the current weapon reload,
 	//              and the pause when you have to reload again 'cause you canceled this one)
-	if (cg.snap->ps.weaponstate == WEAPON_RELOADING)
+	if (cg.snap->ps.weaponstate == WEAPON_RELOADING && cg.snap->ps.weapon != WP_BOMBAS_M1897)
 	{
 		return qfalse;
 	}
@@ -4730,6 +4743,10 @@ void CG_FireWeapon(centity_t *cent)
 	}
 
 	cent->firedTime = cg.time;
+	if (cent->currentState.weapon == WP_BOMBAS_M1897 && cent->currentState.clientNum >= 0 && cent->currentState.clientNum < MAX_CLIENTS)
+	{
+		cg_entities[cent->currentState.clientNum].bombasM1897PumpTime = cg.time + 400;
+	}
 
 	// lightning gun only does this on initial press
 	if (cent->currentState.weapon == WP_FLAMETHROWER && cent->pe.lightningFiring)
