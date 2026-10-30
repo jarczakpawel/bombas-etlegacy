@@ -4324,12 +4324,24 @@ qboolean G_BombasCanKickGrenade(gentity_t *player, gentity_t *missile)
         BG_PlayerMounted(player->client->ps.eFlags) ||
         !missile || !missile->inuse || missile->s.eType != ET_MISSILE ||
         (missile->s.weapon != WP_GRENADE_LAUNCHER &&
-         missile->s.weapon != WP_GRENADE_PINEAPPLE) ||
+         missile->s.weapon != WP_GRENADE_PINEAPPLE &&
+         missile->s.weapon != WP_SMOKE_MARKER &&
+         missile->s.weapon != WP_SMOKE_BOMB) ||
         (missile->classname && !Q_stricmp(missile->classname, "bombas_molotov")) ||
         missile->nextthink < level.time + 420 ||
         missile->nextthink > level.time + 5500)
     {
         return qfalse;
+    }
+
+    if (missile->s.weapon == WP_SMOKE_MARKER || missile->s.weapon == WP_SMOKE_BOMB)
+    {
+        if (!g_bombasMarkerKick.integer || (player->r.svFlags & SVF_BOT) ||
+            (missile->s.weapon == WP_SMOKE_MARKER && missile->think != weapon_checkAirStrikeThink) ||
+            (missile->s.weapon == WP_SMOKE_BOMB && missile->think != weapon_smokeBombExplode))
+        {
+            return qfalse;
+        }
     }
 
     // Only ground-near grenades, not airborne grenades whizzing past heads.
@@ -4401,9 +4413,11 @@ static qboolean G_BombasKickNearestGrenade(gentity_t *player)
     best->clipmask |= CONTENTS_BODY;
     trap_LinkEntity(best);
     *last = level.time;
-    G_Printf("Bombas: %s %d kicked standard grenade (entity %d, fuse remaining %dms)\n",
-             (player->r.svFlags & SVF_BOT) ? "bot" : "player",
-             id, best->s.number, best->nextthink - level.time);
+    G_Printf("Bombas: %s %d kicked %s (entity %d, fuse remaining %dms)\n",
+             (player->r.svFlags & SVF_BOT) ? "bot" : "player", id,
+             best->s.weapon == WP_SMOKE_MARKER ? "airstrike can" :
+             best->s.weapon == WP_SMOKE_BOMB ? "smoke can" : "standard grenade",
+             best->s.number, best->nextthink - level.time);
     return qtrue;
 }
 

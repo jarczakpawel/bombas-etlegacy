@@ -62,6 +62,7 @@ vmCvar_t g_speed;
 vmCvar_t g_gravity;
 vmCvar_t g_bombasMode;
 vmCvar_t g_bombasGrenadeKick;
+vmCvar_t g_bombasMarkerKick;
 vmCvar_t g_bombasMolotovWalls;
 vmCvar_t g_poison;
 vmCvar_t g_goomba;
@@ -447,6 +448,7 @@ cvarTable_t gameCvarTable[] =
 	{ &g_gravity,                         "g_gravity",                         "800",                        0,                                               0, qtrue,  qtrue  },
 	{ &g_bombasMode,                      "g_bombasMode",                      "0",                          CVAR_SERVERINFO,                                 0, qtrue,  qfalse },
 	{ &g_bombasGrenadeKick,               "g_bombasGrenadeKick",               "1",                          CVAR_ARCHIVE,                                    0, qtrue,  qfalse },
+	{ &g_bombasMarkerKick,                "g_bombasMarkerKick",                "0",                          CVAR_ARCHIVE,                                    0, qtrue,  qfalse },
     { &g_bombasMolotovWalls,              "g_bombasMolotovWalls",              "1",                         CVAR_ARCHIVE,                                    0, qtrue,  qfalse },
 	{ &g_poison,                          "g_poison",                          "0",                          CVAR_SERVERINFO,                                 0, qfalse, qfalse },
 	{ &g_goomba,                          "g_goomba",                          "4",                          CVAR_ARCHIVE,                                    0, qtrue,  qfalse },

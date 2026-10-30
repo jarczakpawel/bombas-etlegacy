@@ -63,6 +63,7 @@ extern vmCvar_t sv_privatepassword;
 extern vmCvar_t g_gravity;
 extern vmCvar_t g_bombasMode;
 extern vmCvar_t g_bombasGrenadeKick;
+extern vmCvar_t g_bombasMarkerKick;
 extern vmCvar_t g_bombasMolotovWalls;
 extern vmCvar_t g_poison; // Bombas ETPub-compatible poison damage per second
 extern vmCvar_t g_goomba;
