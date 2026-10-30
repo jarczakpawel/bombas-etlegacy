@@ -6477,7 +6477,7 @@ no_bubble_trail:
 			    (trace.surfaceFlags & SURF_METAL) &&
 			    !(trace.surfaceFlags & (SURF_SKY | SURF_NOIMPACT | SURF_NODRAW)) &&
 			    trace.fraction < 1.f && !trace.startsolid &&
-			    trace.entityNum != ENTITYNUM_NONE && !ISVALIDCLIENTNUM(trace.entityNum) &&
+			    trace.entityNum != ENTITYNUM_NONE && trace.entityNum >= cgs.maxclients &&
 			    DistanceSquared(trace.endpos, end) < 400.f &&
 			    DistanceSquared(trace.endpos, cg.refdef.vieworg) < 1200.f * 1200.f)
 			{
