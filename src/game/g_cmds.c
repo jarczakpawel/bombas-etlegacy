@@ -4619,6 +4619,150 @@ qboolean G_PushPlayer(gentity_t *ent, gentity_t *victim)
  * @brief Cmd_Activate2_f
  * @param[in] ent
  */
+static int bombasDragTarget[MAX_CLIENTS];
+static int bombasDragFrame[MAX_CLIENTS];
+static int bombasDragReported[MAX_CLIENTS];
+
+static qboolean G_BombasDragCandidate(gentity_t *carrier, gentity_t *target)
+{
+    vec3_t start, end;
+    trace_t tr;
+
+    if (!target || !target->inuse || !target->client ||
+        target == carrier || target->client->pers.connected != CON_CONNECTED ||
+        target->client->sess.sessionTeam != carrier->client->sess.sessionTeam ||
+        target->client->ps.pm_type != PM_DEAD ||
+        (target->client->ps.pm_flags & PMF_LIMBO) ||
+        target->health > 0 || target->health <= GIB_HEALTH ||
+        DistanceSquared(carrier->client->ps.origin, target->client->ps.origin) > 100.f * 100.f)
+    {
+        return qfalse;
+    }
+    VectorCopy(carrier->client->ps.origin, start);
+    start[2] += 28.f;
+    VectorCopy(target->client->ps.origin, end);
+    end[2] += 8.f;
+    trap_Trace(&tr, start, NULL, NULL, end, carrier->s.number, MASK_SOLID);
+    return !tr.startsolid && tr.fraction >= .99f;
+}
+
+qboolean G_BombasCorpseDrag(gentity_t *ent)
+{
+    int id, targetId, i, elapsed;
+    gentity_t *target;
+    vec3_t toward, forward, next, groundStart, groundEnd;
+    vec3_t boxMin = { -10.f, -10.f, -10.f };
+    vec3_t boxMax = { 10.f, 10.f, 14.f };
+    trace_t tr, ground;
+    float distance, advance;
+
+    if (!ent || !ent->client || ent->s.number < 0 || ent->s.number >= level.maxclients)
+    {
+        return qfalse;
+    }
+    id = ent->s.number;
+    if (!g_bombasCorpseDrag.integer || (ent->r.svFlags & SVF_BOT) ||
+        !(ent->client->pers.cmd.buttons & BUTTON_ACTIVATE) ||
+        ent->health <= 0 || ent->client->ps.pm_type != PM_NORMAL ||
+        (ent->client->ps.pm_flags & PMF_LIMBO) ||
+        ent->client->sess.sessionTeam == TEAM_SPECTATOR ||
+        BG_PlayerMounted(ent->client->ps.eFlags))
+    {
+        bombasDragTarget[id] = 0;
+        bombasDragReported[id] = 0;
+        return qfalse;
+    }
+
+    targetId = bombasDragTarget[id] - 1;
+    target = targetId >= 0 && targetId < level.maxclients ? &g_entities[targetId] : NULL;
+    if (!G_BombasDragCandidate(ent, target))
+    {
+        target = NULL;
+        bombasDragTarget[id] = 0;
+        AngleVectors(ent->client->ps.viewangles, forward, NULL, NULL);
+        forward[2] = 0.f;
+        if (VectorNormalize(forward) <= 0.f)
+        {
+            return qfalse;
+        }
+        for (i = 0; i < level.maxclients; i++)
+        {
+            gentity_t *candidate = &g_entities[i];
+            if (!G_BombasDragCandidate(ent, candidate))
+            {
+                continue;
+            }
+            VectorSubtract(candidate->client->ps.origin, ent->client->ps.origin, toward);
+            toward[2] = 0.f;
+            if (VectorNormalize(toward) <= 0.f || DotProduct(forward, toward) < .30f)
+            {
+                continue;
+            }
+            if (!target || DistanceSquared(ent->client->ps.origin, candidate->client->ps.origin) <
+                DistanceSquared(ent->client->ps.origin, target->client->ps.origin))
+            {
+                target = candidate;
+            }
+        }
+        if (!target)
+        {
+            return qfalse;
+        }
+        bombasDragTarget[id] = target->s.number + 1;
+        bombasDragFrame[id] = level.time;
+        bombasDragReported[id] = 0;
+    }
+
+    elapsed = level.time - bombasDragFrame[id];
+    bombasDragFrame[id] = level.time;
+    if (elapsed < 0 || elapsed > 150)
+    {
+        elapsed = 0;
+    }
+    VectorSubtract(ent->client->ps.origin, target->client->ps.origin, toward);
+    toward[2] = 0.f;
+    distance = VectorNormalize(toward);
+    if (distance > 44.f && elapsed > 0)
+    {
+        advance = distance - 38.f;
+        if (advance > elapsed * .29f)
+        {
+            advance = elapsed * .29f;
+        }
+        VectorMA(target->client->ps.origin, advance, toward, next);
+        trap_Trace(&tr, target->client->ps.origin, boxMin, boxMax,
+                   next, target->s.number, CONTENTS_SOLID | CONTENTS_PLAYERCLIP);
+        if (tr.startsolid || tr.allsolid || tr.fraction < .99f)
+        {
+            return qtrue;
+        }
+        VectorCopy(next, groundStart);
+        VectorCopy(next, groundEnd);
+        groundStart[2] += 18.f;
+        groundEnd[2] -= 42.f;
+        trap_Trace(&ground, groundStart, NULL, NULL, groundEnd,
+                   target->s.number, CONTENTS_SOLID | CONTENTS_PLAYERCLIP);
+        if (ground.startsolid || ground.allsolid || ground.fraction == 1.f ||
+            ground.plane.normal[2] < .68f ||
+            fabsf(ground.endpos[2] - next[2]) > 18.f)
+        {
+            return qtrue;
+        }
+        next[2] = ground.endpos[2];
+        VectorCopy(next, target->client->ps.origin);
+        VectorCopy(next, target->r.currentOrigin);
+        VectorCopy(next, target->s.pos.trBase);
+        VectorClear(target->client->ps.velocity);
+        trap_LinkEntity(target);
+        if (!bombasDragReported[id])
+        {
+            G_LogPrintf("Bombas_CorpseDrag: %d %d\n", id, target->s.number);
+            bombasDragReported[id] = 1;
+        }
+    }
+    return qtrue;
+}
+
 void Cmd_Activate2_f(gentity_t *ent)
 {
 	trace_t tr;
