@@ -677,7 +677,8 @@ gentity_t *Weapon_AdrenalineSyringe(gentity_t *ent)
 {
 	if (g_bombasAdrenalineShare.integer &&
 	    ent->client && ent->client->sess.playerType == PC_MEDIC &&
-	    (ent->client->pers.cmd.buttons & BUTTON_WALKING) &&
+	    !(ent->r.svFlags & SVF_BOT) &&
+	    (ent->client->pers.cmd.buttons & BUTTON_SPRINT) &&
 	    ent->client->sess.sessionTeam != TEAM_SPECTATOR)
 	{
 		vec3_t start, end, forward;
