@@ -47,6 +47,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{ WP_KNIFE,                SK_LIGHT_WEAPONS,                            0,                         1,   0   },
 			{
 				{ WP_MP40,                 SK_LIGHT_WEAPONS,                            0,                         60,  30  }, // soldier start with x2 ammo
+				{ WP_BOMBAS_STG44, SK_LIGHT_WEAPONS, 0, 60, 20 },
 				{ WP_MOBILE_MG42,          SK_HEAVY_WEAPONS,                            0,                         0,   150 },
 				{ WP_FLAMETHROWER,         SK_HEAVY_WEAPONS,                            0,                         200, 0   },
 				{ WP_PANZERFAUST,          SK_HEAVY_WEAPONS,                            0,                         4,   0   },
@@ -74,6 +75,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{
 				{ WP_MP40,                 SK_LIGHT_WEAPONS,                            0,                         0,   30  }, // medic start with 1 clip less
 				{ WP_BOMBAS_M1897,         SK_LIGHT_WEAPONS,                            0,                         16,  8   },
+				{ WP_BOMBAS_PPSH41, SK_LIGHT_WEAPONS, 0, 96, 48 },
 			},
 			{
 				{ WP_LUGER,                SK_LIGHT_WEAPONS,                            0,                         24,  8   },
@@ -99,6 +101,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{
 				{ WP_MP40,                 SK_LIGHT_WEAPONS,                            0,                         30,  30  },
 				{ WP_BOMBAS_M1897,         SK_LIGHT_WEAPONS,                            0,                         16,  8   },
+				{ WP_BOMBAS_PPSH41, SK_LIGHT_WEAPONS, 0, 96, 48 },
 				{ WP_KAR98,                SK_LIGHT_WEAPONS,                            0,                         20,  10  },
 			},
 			{
@@ -126,6 +129,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{
 				{ WP_MP40,                 SK_LIGHT_WEAPONS,                            0,                         30,  30  },
 				{ WP_BOMBAS_M1897,         SK_LIGHT_WEAPONS,                            0,                         16,  8   },
+				{ WP_BOMBAS_PPSH41, SK_LIGHT_WEAPONS, 0, 96, 48 },
 			},
 			{
 				{ WP_LUGER,                SK_LIGHT_WEAPONS,                            0,                         24,  8   },
@@ -149,6 +153,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{ WP_KNIFE,                SK_LIGHT_WEAPONS,                            0,                         1,   0   },
 			{
 				{ WP_MP34,                 SK_LIGHT_WEAPONS,                            0,                         64,  32  }, // covert-ops start with x2 ammo
+				{ WP_BOMBAS_STG44, SK_LIGHT_WEAPONS, 0, 60, 20 },
 				{ WP_FG42,                 SK_LIGHT_WEAPONS,                            0,                         40,  20  },
 				{ WP_K43,                  SK_MILITARY_INTELLIGENCE_AND_SCOPED_WEAPONS, 0,                         20,  10  },
 			},
@@ -178,6 +183,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{ WP_KNIFE_KABAR,          SK_LIGHT_WEAPONS,                            0,                         1,   0   },
 			{
 				{ WP_THOMPSON,             SK_LIGHT_WEAPONS,                            0,                         60,  30  }, // soldier start with x2 ammo
+				{ WP_BOMBAS_BAR, SK_LIGHT_WEAPONS, 0, 60, 20 },
 				{ WP_MOBILE_BROWNING,      SK_HEAVY_WEAPONS,                            0,                         0,   150 },
 				{ WP_FLAMETHROWER,         SK_HEAVY_WEAPONS,                            0,                         200, 0   },
 				{ WP_BAZOOKA,              SK_HEAVY_WEAPONS,                            0,                         4,   0   },
@@ -205,6 +211,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{
 				{ WP_THOMPSON,             SK_LIGHT_WEAPONS,                            0,                         0,   30  }, // medic start with 1 clip less
 				{ WP_BOMBAS_M1897,         SK_LIGHT_WEAPONS,                            0,                         16,  8   },
+				{ WP_BOMBAS_PPSH41, SK_LIGHT_WEAPONS, 0, 96, 48 },
 			},
 			{
 				{ WP_COLT,                 SK_LIGHT_WEAPONS,                            0,                         24,  8   },
@@ -230,6 +237,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{
 				{ WP_THOMPSON,             SK_LIGHT_WEAPONS,                            0,                         30,  30  },
 				{ WP_BOMBAS_M1897,         SK_LIGHT_WEAPONS,                            0,                         16,  8   },
+				{ WP_BOMBAS_PPSH41, SK_LIGHT_WEAPONS, 0, 96, 48 },
 				{ WP_CARBINE,              SK_LIGHT_WEAPONS,                            0,                         20,  10  },
 			},
 			{
@@ -257,6 +265,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{
 				{ WP_THOMPSON,             SK_LIGHT_WEAPONS,                            0,                         30,  30  },
 				{ WP_BOMBAS_M1897,         SK_LIGHT_WEAPONS,                            0,                         16,  8   },
+				{ WP_BOMBAS_PPSH41, SK_LIGHT_WEAPONS, 0, 96, 48 },
 			},
 			{
 				{ WP_COLT,                 SK_LIGHT_WEAPONS,                            0,                         24,  8   },
@@ -280,6 +289,7 @@ bg_playerclass_t bg_playerClasses[2][NUM_PLAYER_CLASSES] =
 			{ WP_KNIFE_KABAR,          SK_LIGHT_WEAPONS,                            0,                         1,   0   },
 			{
 				{ WP_STEN,                 SK_LIGHT_WEAPONS,                            0,                         64,  32  }, // covert-ops start with x2 ammo
+				{ WP_BOMBAS_BAR, SK_LIGHT_WEAPONS, 0, 60, 20 },
 				{ WP_FG42,                 SK_LIGHT_WEAPONS,                            0,                         40,  20  },
 				{ WP_GARAND,               SK_MILITARY_INTELLIGENCE_AND_SCOPED_WEAPONS, 0,                         20,  10  },
 			},

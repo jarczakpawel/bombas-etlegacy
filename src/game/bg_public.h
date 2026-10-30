@@ -912,6 +912,9 @@ typedef enum
 	WP_MP34,                   ///< 54	Axis Sten alternative
 	WP_AIRSTRIKE,              ///< 55
 	WP_BOMBAS_M1897,          ///< 56
+	WP_BOMBAS_PPSH41,         ///< 57
+	WP_BOMBAS_STG44,          ///< 58
+	WP_BOMBAS_BAR,            ///< 59
 
 	WP_NUM_WEAPONS             ///< 57
 	///< NOTE: this cannot be larger than 64 for AI/player weapons!
@@ -1147,6 +1150,9 @@ typedef enum
     // Append only; never renumber existing ET means-of-death values.
     MOD_BOMBAS_NITRO,
 	MOD_BOMBAS_M1897,
+	MOD_BOMBAS_PPSH41,
+	MOD_BOMBAS_STG44,
+	MOD_BOMBAS_BAR,
 
 	MOD_NUM_MODS
 
@@ -1870,6 +1876,9 @@ typedef enum extWeaponStats_e
 	WS_MP34,           ///< 26
 	WS_SYRINGE,        ///< 27
 	WS_BOMBAS_M1897,   ///< 28
+	WS_BOMBAS_PPSH41,  ///< 29
+	WS_BOMBAS_STG44,   ///< 30
+	WS_BOMBAS_BAR,     ///< 31
 
 	WS_MAX
 } extWeaponStats_t;
@@ -2014,6 +2023,9 @@ typedef enum item_s
 	ITEM_RED_FLAG,
 	ITEM_BLUE_FLAG,
 	ITEM_WEAPON_BOMBAS_M1897,
+	ITEM_WEAPON_BOMBAS_PPSH41,
+	ITEM_WEAPON_BOMBAS_STG44,
+	ITEM_WEAPON_BOMBAS_BAR,
 	ITEM_MAX_ITEMS,
 
 } item_t;

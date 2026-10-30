@@ -958,6 +958,7 @@ typedef struct weaponInfo_s
 	weaponModel_t weaponModel[W_NUM_TYPES];
 	partModel_t partModels[W_NUM_TYPES][W_MAX_PARTS];
 	qhandle_t flashModel[W_NUM_TYPES];
+	qhandle_t brassModel;
 	float flashScale[2];
 	qhandle_t modModels[6];             ///< like the scope for the rifles
 
@@ -1146,7 +1147,7 @@ typedef struct
 } demoBackwardsCompat_t;
 
 #define MAX_WEAP_BANKS_MP          10
-#define MAX_WEAPS_IN_BANK_MP       19
+#define MAX_WEAPS_IN_BANK_MP       22
 #define MAX_WEAP_BANK_SWITCH_ORDER 4
 
 #define MAX_BACKUP_STATES (CMD_BACKUP_ETL + 2)
