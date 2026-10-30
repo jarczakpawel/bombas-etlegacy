@@ -107,7 +107,7 @@ jobs:
             const fs = require('fs');
             const crypto = require('crypto');
             const owner = context.repo.owner, repo = context.repo.repo;
-            const files = fs.readdirSync('dist').filter(n => /^zzzzzz_bombas_client_universal_v065_[a-f0-9]{12}\.pk3$/.test(n));
+            const files = fs.readdirSync('dist').filter(n => /^zzzzzz_bombas_client_universal_v084_[a-f0-9]{12}\.pk3$/.test(n));
             if (files.length !== 1) throw new Error('Expected exactly one validated universal client package');
             const bytes = fs.readFileSync('dist/' + files[0]);
             const digest = crypto.createHash('sha256').update(bytes).digest('hex');

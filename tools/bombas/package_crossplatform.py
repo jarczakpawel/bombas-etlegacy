@@ -51,7 +51,7 @@ for name in ('pt1_strt.wav', 'pt1_end.wav'):
     files['sound/movers/plats/' + name] = payload
 
 files['bombas/client_manifest.json'] = (json.dumps({
-    'version': 65,
+    'version': 84,
     'supported_platforms': list(required),
     'native_sha256': checksums,
     'requires_installer': False,
@@ -69,6 +69,6 @@ with zipfile.ZipFile(temporary) as archive:
     if archive.testzip() is not None or set(archive.namelist()) != set(files):
         raise ValueError('Client package verification failed')
 digest = hashlib.sha256(temporary.read_bytes()).hexdigest()
-result = args.output / f'zzzzzz_bombas_client_universal_v065_{digest[:12]}.pk3'
+result = args.output / f'zzzzzz_bombas_client_universal_v084_{digest[:12]}.pk3'
 temporary.rename(result)
 print(json.dumps({'file': result.name, 'sha256': digest, 'files': sorted(files), 'native_sha256': checksums}, indent=2))
