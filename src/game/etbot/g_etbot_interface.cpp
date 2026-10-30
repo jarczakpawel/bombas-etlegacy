@@ -1235,6 +1235,8 @@ static weapon_t _weaponBotToGame(int weapon)
 		return WP_MORTAR_SET;
 	case ET_WP_MP40:
 		return WP_MP40;
+	case ET_WP_BOMBAS_M1897:
+		return WP_BOMBAS_M1897;
 	case ET_WP_PANZERFAUST:
 		return WP_PANZERFAUST;
 	case ET_WP_PLIERS:
@@ -1342,6 +1344,8 @@ int Bot_WeaponGameToBot(int weapon)
 		return ET_WP_MORTAR_SET;
 	case WP_MP40:
 		return ET_WP_MP40;
+	case WP_BOMBAS_M1897:
+		return ET_WP_BOMBAS_M1897;
 	case WP_PANZERFAUST:
 		return ET_WP_PANZERFAUST;
 	case WP_PLIERS:
@@ -1534,7 +1538,8 @@ static int _choosePriWeap(gentity_t *bot, int playerClass, int team)
 					ET_WP_MOBILE_MG42,
 					ET_WP_FLAMETHROWER,
 					ET_WP_MORTAR,
-					ET_WP_THOMPSON
+					ET_WP_THOMPSON,
+					ET_WP_BOMBAS_M1897  // R87: 1/6 Soldier spawns, native bot aim/reload
 				};
 				int rInt = rand() % (sizeof(wpns) / sizeof(wpns[0]));
 				iSelected = wpns[rInt];
@@ -1549,7 +1554,8 @@ static int _choosePriWeap(gentity_t *bot, int playerClass, int team)
 					ET_WP_FLAMETHROWER,
 					//92 // MORTAR2
 					ET_WP_MORTAR,
-					ET_WP_MP40
+					ET_WP_MP40,
+					ET_WP_BOMBAS_M1897  // R87: same odds for Axis Soldier
 				};
 				int rInt = rand() % (sizeof(wpns) / sizeof(wpns[0]));
 				iSelected = wpns[rInt];

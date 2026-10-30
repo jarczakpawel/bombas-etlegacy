@@ -180,6 +180,8 @@ typedef enum eET_Weapons
 	ET_WP_M7,           // grenade launcher
 
 	ET_WP_MOUNTABLE_MG42,
+	// R87 only, explicit ID does not renumber existing Omni-Bot weapons.
+	ET_WP_BOMBAS_M1897 = 77,
 
 	ET_WP_MAX = ET_WP_NONE + 128
 } ET_Weapon;
