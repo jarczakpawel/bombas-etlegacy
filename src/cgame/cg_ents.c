@@ -1903,7 +1903,8 @@ static void CG_Missile(centity_t *cent)
 		}
 	}
 
-	if (s1->clientNum == cg.snap->ps.clientNum && s1->pos.trType != TR_STATIONARY &&
+	if (!cg.bombasMissileCamPass && s1->clientNum == cg.snap->ps.clientNum &&
+	    s1->pos.trType != TR_STATIONARY &&
 	    ((cgs.sv_cheats || cg.demoPlayback) ||
 	     (cg_bombasMissileCam.integer && cg.snap->ps.pm_type == PM_NORMAL &&
 	      !(cg.snap->ps.pm_flags & PMF_FOLLOW) &&
@@ -3573,7 +3574,10 @@ void CG_AddPacketEntities(void)
 {
 	int num;
 
-	cg.latestMissile = NULL;
+	if (!cg.bombasMissileCamPass)
+	{
+		cg.latestMissile = NULL;
+	}
 
 	// set cg.frameInterpolation
 	if (cg.nextSnap)
@@ -3619,7 +3623,10 @@ void CG_AddPacketEntities(void)
 	// lerp the non-predicted value for lightning gun origins
 	CG_CalcEntityLerpPositions(&cg_entities[cg.snap->ps.clientNum]);
 
-	cg.satchelCharge = NULL;
+	if (!cg.bombasMissileCamPass)
+	{
+		cg.satchelCharge = NULL;
+	}
 
 	// changing to a single loop, child will request that their parents are added first anyway
 	for (num = 0; num < cg.snap->numEntities ; num++)
@@ -3637,7 +3644,10 @@ void CG_AddPacketEntities(void)
 	}
 
 	// add the flamethrower sounds
-	CG_UpdateFlamethrowerSounds();
+	if (!cg.bombasMissileCamPass)
+	{
+		CG_UpdateFlamethrowerSounds();
+	}
 }
 
 /**
