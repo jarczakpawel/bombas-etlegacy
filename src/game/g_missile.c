@@ -651,6 +651,30 @@ qboolean G_BounceMissile(gentity_t *ent, trace_t *trace)
 	return qtrue;
 }
 
+static void G_BombasEmbeddedKnifeThink(gentity_t *knife)
+{
+    vec3_t axis[3], position, normal;
+    int i;
+    if (level.time >= knife->timestamp || !knife->enemy || !knife->enemy->inuse ||
+        knife->enemy->s.eType != ET_MOVER)
+    {
+        G_FreeEntity(knife);
+        return;
+    }
+    AnglesToAxis(knife->enemy->r.currentAngles, axis);
+    VectorCopy(knife->enemy->r.currentOrigin, position);
+    VectorClear(normal);
+    for (i = 0; i < 3; i++)
+    {
+        VectorMA(position, knife->pos1[i], axis[i], position);
+        VectorMA(normal, knife->pos2[i], axis[i], normal);
+    }
+    G_SetOrigin(knife, position);
+    vectoangles(normal, knife->s.apos.trBase);
+    trap_LinkEntity(knife);
+    knife->nextthink = level.time + FRAMETIME;
+}
+
 /**
  * @brief G_MissileImpact
  * @param[in] ent
@@ -670,27 +694,6 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 	if (G_BombasMolotovProjectile(ent))
 	{
 		G_BombasMolotovBurst(ent, trace->endpos, trace->plane.normal);
-		return;
-	}
-
-	if (ent->classname && !Q_stricmp(ent->classname, "bombas_throwing_knife") &&
-	    trace->entityNum == ENTITYNUM_WORLD && !(trace->surfaceFlags & (SURF_SKY | SURF_NOIMPACT)))
-	{
-		vec3_t origin, direction;
-		VectorScale(trace->plane.normal, -1.f, direction);
-		VectorMA(trace->endpos, -3.f, trace->plane.normal, origin);
-		ent->s.eType = ET_GENERAL;
-		ent->s.weapon = WP_NONE;
-		ent->s.modelindex = G_ModelIndex("models/weapons2/knife_kbar/knife_throw.md3");
-		ent->s.apos.trType = TR_STATIONARY;
-		vectoangles(direction, ent->s.apos.trBase);
-		ent->s.pos.trType = TR_STATIONARY;
-		ent->r.contents = 0;
-		ent->clipmask = 0;
-		ent->think = G_FreeEntity;
-		ent->nextthink = level.time + 1600;
-		G_SetOrigin(ent, origin);
-		trap_LinkEntity(ent);
 		return;
 	}
 
@@ -753,6 +756,43 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 			G_BounceMissile(ent, trace);
 			return;
 		}
+	}
+
+	if (ent->classname && !Q_stricmp(ent->classname, "bombas_throwing_knife") &&
+	    trace->entityNum != ENTITYNUM_NONE && trace->entityNum >= MAX_CLIENTS &&
+	    !(trace->surfaceFlags & (SURF_SKY | SURF_NOIMPACT)) && !other->client)
+	{
+		vec3_t origin, direction;
+		VectorScale(trace->plane.normal, -1.f, direction);
+		VectorMA(trace->endpos, -3.f, trace->plane.normal, origin);
+		ent->s.eType = ET_GENERAL;
+		ent->s.weapon = WP_NONE;
+		ent->s.modelindex = G_ModelIndex("models/weapons2/knife_kbar/knife_throw.md3");
+		ent->s.apos.trType = TR_STATIONARY;
+		vectoangles(direction, ent->s.apos.trBase);
+		ent->r.contents = 0;
+		ent->clipmask = 0;
+		ent->think = G_FreeEntity;
+		ent->nextthink = level.time + 1600;
+		G_SetOrigin(ent, origin);
+		if (trace->entityNum != ENTITYNUM_WORLD && other->inuse && other->s.eType == ET_MOVER)
+		{
+			vec3_t axis[3], offset;
+			int i;
+			AnglesToAxis(other->r.currentAngles, axis);
+			VectorSubtract(origin, other->r.currentOrigin, offset);
+			for (i = 0; i < 3; i++)
+			{
+				ent->pos1[i] = DotProduct(offset, axis[i]);
+				ent->pos2[i] = DotProduct(direction, axis[i]);
+			}
+			ent->enemy = other;
+			ent->timestamp = level.time + 1600;
+			ent->think = G_BombasEmbeddedKnifeThink;
+			ent->nextthink = level.time + FRAMETIME;
+		}
+		trap_LinkEntity(ent);
+		return;
 	}
 
 	// TODO: is it cheaper in bandwidth to just remove this ent and create a new

@@ -2181,7 +2181,25 @@ void WolfReviveBbox(gentity_t *self)
  */
 void ClientEndFrame(gentity_t *ent)
 {
+	static int bombasPingNext[MAX_CLIENTS];
+	static int bombasPingConnect[MAX_CLIENTS];
 	int i, frames;
+
+	if (!(ent->r.svFlags & SVF_BOT) && ent->s.number >= 0 && ent->s.number < MAX_CLIENTS &&
+	    ent->client->pers.connected == CON_CONNECTED)
+	{
+		int id = ent->s.number;
+		if (bombasPingConnect[id] != ent->client->pers.connectTime)
+		{
+			bombasPingConnect[id] = ent->client->pers.connectTime;
+			bombasPingNext[id] = 0;
+		}
+		if (level.time >= bombasPingNext[id] && ent->client->ps.ping >= 0 && ent->client->ps.ping < 999)
+		{
+			trap_SendServerCommand(id, va("bombas_perf_ping %d", ent->client->ps.ping));
+			bombasPingNext[id] = level.time + 400;
+		}
+	}
 
 	if (g_gamestate.integer == GS_PLAYING && level.match_pause == PAUSE_NONE)
 	{

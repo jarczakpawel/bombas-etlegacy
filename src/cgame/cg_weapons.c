@@ -2959,11 +2959,11 @@ void CG_AddViewWeapon(playerState_t *ps)
 			if (bombasKnifeHeldKey >= 0)
 			{
 				float windup = Com_Clamp(0.f, 1.f, (cg.time - bombasKnifeWindupTime) / 240.f);
-				gunoff[0] -= 16.f * windup;
-				gunoff[1] += 5.f * windup;
-				gunoff[2] += 3.f * windup;
-				angles[PITCH] -= 30.f * windup;
-				angles[ROLL] += 12.f * windup;
+				gunoff[0] += 8.f * windup;
+				gunoff[1] -= 15.f * windup;
+				gunoff[2] -= 3.f * windup;
+				angles[PITCH] -= 5.f * windup;
+				angles[ROLL] -= 4.f * windup;
 			}
 			else if (cg.time >= bombasKnifeReleaseTime && cg.time - bombasKnifeReleaseTime < 400)
 			{
@@ -2971,9 +2971,11 @@ void CG_AddViewWeapon(playerState_t *ps)
 				if (elapsed < 100)
 				{
 					float release = 1.f - elapsed / 100.f;
-					gunoff[0] -= 16.f * release;
-					gunoff[1] += 5.f * release;
-					angles[PITCH] -= 30.f * release;
+					gunoff[0] += 8.f * release;
+					gunoff[1] -= 15.f * release;
+					gunoff[2] -= 3.f * release;
+					angles[PITCH] -= 5.f * release;
+					angles[ROLL] -= 4.f * release;
 				}
 				else if (elapsed < 210)
 				{

@@ -1169,6 +1169,8 @@ typedef struct
 	qboolean bombasKnivesHudEnabled;
 	int bombasKnivesRemaining;
 	int bombasKnivesSpawnCount;
+	int bombasServerPing;
+	int bombasServerPingTime;
 
 	qboolean demoPlayback;
 	demoPlayInfo_t *demoinfo;
