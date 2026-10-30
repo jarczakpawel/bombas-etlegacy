@@ -88,6 +88,31 @@ void G_BombasKnifeHudSpawn(gentity_t *ent)
     trap_SendServerCommand(id, va("bombas_knives 3 %d", bombasKnifeSpawnCount[id]));
 }
 
+qboolean G_BombasKnifeAmmo(gentity_t *ent, qboolean consume)
+{
+    int id;
+    if (!ent || !ent->client || !g_bombasThrowingKnives.integer ||
+        (ent->r.svFlags & SVF_BOT) || ent->health <= 0 ||
+        ent->client->sess.sessionTeam == TEAM_SPECTATOR)
+    {
+        return qfalse;
+    }
+    id = ent->s.number;
+    if (id < 0 || id >= level.maxclients || !bombasKnifeKnown[id] ||
+        bombasKnifeSpawnCount[id] != ent->client->ps.persistant[PERS_SPAWN_COUNT] ||
+        bombasKnifeConnectTime[id] != ent->client->pers.connectTime ||
+        bombasKnifeShots[id] <= 0)
+    {
+        return qfalse;
+    }
+    if (consume)
+    {
+        bombasKnifeShots[id]--;
+        trap_SendServerCommand(id, va("bombas_knives %d %d", 3 - bombasKnifeShots[id], bombasKnifeSpawnCount[id]));
+    }
+    return qtrue;
+}
+
 void G_BombasThrowKnife(gentity_t *ent)
 {
     int id;

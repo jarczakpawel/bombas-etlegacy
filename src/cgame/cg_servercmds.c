@@ -3347,6 +3347,19 @@ static void CG_ServerCommand(void)
 	long       hash = 0;
 
 	cmd = CG_Argv(0);
+	if (!Q_stricmp(cmd, "bombas_perf_ping"))
+	{
+		if (trap_Argc() == 2)
+		{
+			int value = Q_atoi(CG_Argv(1));
+			if (value >= 0 && value < 999)
+			{
+				cg.bombasServerPing = value;
+				cg.bombasServerPingTime = cg.time;
+			}
+		}
+		return;
+	}
 	if (!Q_stricmp(cmd, "bombas_knives"))
 	{
 		if (trap_Argc() == 3)

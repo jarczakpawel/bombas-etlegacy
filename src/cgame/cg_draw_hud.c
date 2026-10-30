@@ -3149,11 +3149,16 @@ static qboolean CG_BombasStatsVisible(void)
 
 static int CG_BombasDisplayPing(void)
 {
-    if (!cg.snap || cg.snap->ps.ping < 0 || cg.snap->ps.ping >= 999)
+    if (!cg.snap)
     {
         return -1;
     }
-    return cg.snap->ps.ping;
+    if (cg.bombasServerPingTime > 0 && cg.time >= cg.bombasServerPingTime &&
+        cg.time - cg.bombasServerPingTime < 2000)
+    {
+        return cg.bombasServerPing;
+    }
+    return cg.snap->ping >= 0 && cg.snap->ping < 999 ? cg.snap->ping : -1;
 }
 
 void CG_DrawFPS(hudComponent_t *comp)

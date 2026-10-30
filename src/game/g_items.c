@@ -488,6 +488,7 @@ int Pickup_Weapon(gentity_t *ent, gentity_t *other)
 	if (ent->item->giWeapon == WP_AMMO)
 	{
 		AddMagicAmmo(other, ent->count);
+		G_BombasKnifeAmmo(other, qtrue);
 		if (ent->parent && ent->parent->client)
 		{
 			other->client->pers.lastammo_client = ent->parent->s.clientNum;
@@ -766,7 +767,8 @@ void Touch_Item(gentity_t *ent, gentity_t *other, trace_t *trace)
 	}
 
 	// the same pickup rules are used for client side and server side
-	if (!BG_CanItemBeGrabbed(&ent->s, &other->client->ps, other->client->sess.skill, other->client->sess.sessionTeam))
+	if (!BG_CanItemBeGrabbed(&ent->s, &other->client->ps, other->client->sess.skill, other->client->sess.sessionTeam) &&
+	    !(ent->item->giType == IT_WEAPON && ent->item->giWeapon == WP_AMMO && G_BombasKnifeAmmo(other, qfalse)))
 	{
 		return;
 	}
