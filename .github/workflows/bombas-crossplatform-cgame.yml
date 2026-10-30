@@ -6,7 +6,7 @@ permissions:
 on:
   workflow_dispatch:
   push:
-    branches: [main, feature/bombas-r87-m1897, feature/bombas-r88-knife-hud, feature/bombas-r89-team-loadout-ff-fixes, feature/bombas-r94-ppsh-stg44-bar, feature/bombas-r98-missile-camera, feature/bombas-r104-team-ping, feature/bombas-r105-three-fixes, feature/bombas-r106-knife-hud-corrections, feature/bombas-r107-knife-whizz-grenade, feature/bombas-r108-cabinet-knife-depth-whizz, feature/bombas-r109-cosmetic-ricochet]
+    branches: [main, feature/bombas-r87-m1897, feature/bombas-r88-knife-hud, feature/bombas-r89-team-loadout-ff-fixes, feature/bombas-r94-ppsh-stg44-bar, feature/bombas-r98-missile-camera, feature/bombas-r104-team-ping, feature/bombas-r105-three-fixes, feature/bombas-r106-knife-hud-corrections, feature/bombas-r107-knife-whizz-grenade, feature/bombas-r108-cabinet-knife-depth-whizz, feature/bombas-r109-cosmetic-ricochet, feature/bombas-r110-ricochet-knife]
   pull_request:
     branches: [main]
 
@@ -100,7 +100,7 @@ jobs:
           path: dist/*.pk3
           if-no-files-found: error
       - name: Publish SHA-verified client to dedicated release branch
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/bombas-r109-cosmetic-ricochet'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/bombas-r109-cosmetic-ricochet' || github.ref == 'refs/heads/feature/bombas-r110-ricochet-knife'
         uses: actions/github-script@v7
         with:
           script: |

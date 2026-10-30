@@ -6474,30 +6474,48 @@ no_bubble_trail:
 
 			if (cg_bombasRicochet.integer && cg.bombasServerPingTime > 0 &&
 			    cg.time - cg.bombasServerPingTime < 2000 &&
-			    (trace.surfaceFlags & SURF_METAL) &&
-			    !(trace.surfaceFlags & (SURF_SKY | SURF_NOIMPACT | SURF_NODRAW)) &&
-			    trace.fraction < 1.f && !trace.startsolid &&
-			    trace.entityNum != ENTITYNUM_NONE && trace.entityNum >= cgs.maxclients &&
-			    DistanceSquared(trace.endpos, end) < 400.f &&
+			    !(trace.surfaceFlags & (SURF_SKY | SURF_NOIMPACT | SURF_NODRAW | SURF_NONSOLID)) &&
+			    trace.fraction < 1.f && !trace.startsolid && !trace.allsolid &&
+			    trace.entityNum >= cgs.maxclients && trace.entityNum != ENTITYNUM_NONE &&
+			    DistanceSquared(trace.endpos, end) < 64.f * 64.f &&
 			    DistanceSquared(trace.endpos, cg.refdef.vieworg) < 1200.f * 1200.f)
 			{
 				static int lastRicochetTime = -100000;
 				float incidence = DotProduct(dir, trace.plane.normal);
+				int metal = (trace.surfaceFlags & SURF_METAL) != 0;
+				int stone = !metal && !(trace.surfaceFlags & (SURF_WOOD | SURF_GRASS | SURF_CARPET |
+				                                      SURF_SNOW | SURF_GLASS | SURF_SPLASH));
 
 				if (cg.time < lastRicochetTime)
 				{
 					lastRicochetTime = -100000;
 				}
-				if (incidence > 0.08f && incidence < 0.4f && cg.time - lastRicochetTime >= 260)
+				if ((metal || stone) && incidence > 0.02f && incidence <= 1.01f &&
+				    cg.time - lastRicochetTime >= 280)
 				{
-					vec3_t reflected;
+					vec3_t outgoing, impact, drift;
 					int variant = ((int)trace.endpos[0] * 3 + (int)trace.endpos[1] * 5 + cg.time / 109) & 3;
-					VectorScale(dir, -1.f, reflected);
-					VectorMA(reflected, 2.f * incidence, trace.plane.normal, reflected);
-					CG_AddSparks(trace.endpos, reflected, 135, 140, 1, 0.07f);
-					if (cgs.media.bombasRicochetSounds[variant])
+					VectorScale(dir, -1.f, outgoing);
+					VectorMA(outgoing, 2.f * incidence, trace.plane.normal, outgoing);
+					VectorMA(trace.endpos, 1.5f, trace.plane.normal, impact);
+					if (metal)
 					{
-						trap_S_StartSoundVControl(trace.endpos, -1, CHAN_AUTO, cgs.media.bombasRicochetSounds[variant], 65);
+						VectorScale(trace.plane.normal, 5.f, drift);
+						CG_SmokePuff(impact, drift, 5.f, 1.f, .78f, .3f, .7f, 180.f, cg.time, 0, 0, cgs.media.sparkParticleShader);
+						CG_AddSparks(impact, outgoing, 175, 220, incidence < .85f ? 2 : 1, .22f);
+						if (incidence < .85f && cgs.media.bombasRicochetSounds[variant])
+						{
+							trap_S_StartSoundVControl(impact, -1, CHAN_AUTO, cgs.media.bombasRicochetSounds[variant], 115);
+						}
+					}
+					else
+					{
+						VectorMA(trace.plane.normal, 9.f, outgoing, 10.f, drift);
+						CG_SmokePuff(impact, drift, 9.f, .68f, .64f, .57f, .68f, 300.f, cg.time, 0, 0, cgs.media.smokePuffShader);
+						if (incidence < .85f && cgs.media.sfx_brassSound[BRASSSOUND_STONE][variant % 3][0])
+						{
+							trap_S_StartSoundVControl(impact, -1, CHAN_AUTO, cgs.media.sfx_brassSound[BRASSSOUND_STONE][variant % 3][0], 100);
+						}
 					}
 					lastRicochetTime = cg.time;
 				}

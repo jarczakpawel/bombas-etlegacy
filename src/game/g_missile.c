@@ -764,8 +764,16 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 	    !(trace->surfaceFlags & SURF_SKY) && !other->client)
 	{
 		vec3_t origin, direction;
-		VectorScale(trace->plane.normal, -1.f, direction);
-		VectorMA(trace->endpos, 9.f, trace->plane.normal, origin);
+		float projected;
+		BG_EvaluateTrajectoryDelta(&ent->s.pos, level.time, direction, qfalse, ent->s.effect2Time);
+		if (VectorNormalize(direction) < .001f)
+		{
+			VectorScale(trace->plane.normal, -1.f, direction);
+		}
+		VectorMA(direction, -.3f, trace->plane.normal, direction);
+		VectorNormalize(direction);
+		projected = -DotProduct(direction, trace->plane.normal);
+		VectorMA(trace->endpos, 9.96f * projected - 2.3f, trace->plane.normal, origin);
 		ent->s.eType = ET_GENERAL;
 		ent->s.weapon = WP_NONE;
 		ent->s.modelindex = G_ModelIndex("models/weapons2/knife_kbar/knife_throw.md3");
@@ -774,7 +782,7 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 		ent->r.contents = 0;
 		ent->clipmask = 0;
 		ent->think = G_FreeEntity;
-		ent->nextthink = level.time + 1600;
+		ent->nextthink = level.time + 20000;
 		G_SetOrigin(ent, origin);
 		if (trace->entityNum != ENTITYNUM_WORLD && other->inuse && other->s.eType == ET_MOVER)
 		{
@@ -788,7 +796,7 @@ void G_MissileImpact(gentity_t *ent, trace_t *trace, int impactDamage)
 				ent->pos2[i] = DotProduct(direction, axis[i]);
 			}
 			ent->enemy = other;
-			ent->timestamp = level.time + 1600;
+			ent->timestamp = level.time + 20000;
 			ent->think = G_BombasEmbeddedKnifeThink;
 			ent->nextthink = level.time + FRAMETIME;
 		}
