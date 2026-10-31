@@ -103,7 +103,7 @@ for filename, (digest, size) in meshes.items():
     temp = file.with_suffix(".fixed")
     urllib.request.urlretrieve(url, temp)
     raw = temp.read_bytes()
-    if len(raw) != size or not raw.startswith(b"ply\\n") or hashlib.sha256(raw).hexdigest() != digest:
+    if len(raw) != size or not raw.startswith(b"ply\n") or hashlib.sha256(raw).hexdigest() != digest:
         temp.unlink(missing_ok=True)
         raise RuntimeError(f"Niepoprawny plik PLY: {filename}")
     temp.replace(file)
