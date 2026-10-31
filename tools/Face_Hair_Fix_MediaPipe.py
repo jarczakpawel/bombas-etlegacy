@@ -141,6 +141,13 @@ if old_call in launch_text:
     launcher.write_text(launch_text.replace(old_call, new_call, 1))
     print("Poprawiono argument modelu materialow.",flush=True)
 
+launch_code = launcher.read_text()
+quiet_launch = "app.queue().launch(share=True, inline=True, quiet=True, show_error=True, height=900)"
+visible_launch = "app.queue().launch(share=True, inline=False, quiet=False, show_error=True, height=900)"
+if quiet_launch in launch_code:
+    launcher.write_text(launch_code.replace(quiet_launch, visible_launch, 1))
+    print("Wlaczono wyswietlanie publicznego linku Gradio.", flush=True)
+
 env=os.environ.copy()
 env["PATH"]="/content/facehair_env/bin:"+env.get("PATH","")
 env["PYTHONNOUSERSITE"]="1"
