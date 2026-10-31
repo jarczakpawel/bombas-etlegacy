@@ -109,6 +109,22 @@ for filename, (digest, size) in meshes.items():
     temp.replace(file)
     print(f"{filename}: poprawny PLY - {len(raw)} bajtow.", flush=True)
 
+gradio_origin = subprocess.check_output(
+    [str(python), "-c", "import importlib.util; print(importlib.util.find_spec('gradio').origin)"],
+    text=True
+).strip()
+gradio_routes = Path(gradio_origin).with_name("routes.py")
+route_code = gradio_routes.read_text()
+old_template = 'templates.TemplateResponse(\\n                    template,\\n                    {"request": request, "config": config},\\n                )'
+new_template = 'templates.TemplateResponse(\\n                    request=request,\\n                    name=template,\\n                    context={"request": request, "config": config},\\n                )'
+if old_template in route_code:
+    gradio_routes.write_text(route_code.replace(old_template, new_template, 1))
+    print("Gradio 3.50.2: naprawiono TemplateResponse dla nowego Starlette.", flush=True)
+elif new_template in route_code:
+    print("Gradio: poprawka TemplateResponse jest juz zainstalowana.", flush=True)
+else:
+    raise RuntimeError("Nie rozpoznano wywolania TemplateResponse w Gradio. Nie zmieniam pliku.")
+
 print("MediaPipe działa. Uruchamiam DiffLocks...", flush=True)
 
 launch_text = launcher.read_text()
