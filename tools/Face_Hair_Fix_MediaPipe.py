@@ -85,6 +85,30 @@ print("MediaPipe FaceLandmarker OK",flush=True)
 detector.close()
 """
 subprocess.run([str(python), "-c", check_code], check=True)
+# The Studio fork often contains Git LFS pointers instead of real PLY meshes.
+# Fetch the original upstream meshes and verify their exact SHA256 values.
+meshes = {
+    "scalp.ply": ("5f111210f98d5785ee7458cd87314987ec8f9416c4bfc7944fe114c1fa76883c", 29027),
+    "smplx_base.ply": ("09d708271ecb602e24dc4817bcbea7d8f0d3be6a4dd9af79f5d94583cef33525", 679254),
+}
+body_dir = root / "data_loader/difflocks_bodydata"
+body_dir.mkdir(parents=True, exist_ok=True)
+for filename, (digest, size) in meshes.items():
+    file = body_dir / filename
+    if file.is_file() and file.stat().st_size == size and hashlib.sha256(file.read_bytes()).hexdigest() == digest:
+        print(f"{filename}: prawidlowy ({size} bajtow).", flush=True)
+        continue
+    print(f"{filename}: naprawiam plik Git LFS ze zrodla projektu...", flush=True)
+    url = "https://raw.githubusercontent.com/Meshcapade/difflocks/main/data_loader/difflocks_bodydata/" + filename
+    temp = file.with_suffix(".fixed")
+    urllib.request.urlretrieve(url, temp)
+    raw = temp.read_bytes()
+    if len(raw) != size or not raw.startswith(b"ply\\n") or hashlib.sha256(raw).hexdigest() != digest:
+        temp.unlink(missing_ok=True)
+        raise RuntimeError(f"Niepoprawny plik PLY: {filename}")
+    temp.replace(file)
+    print(f"{filename}: poprawny PLY - {len(raw)} bajtow.", flush=True)
+
 print("MediaPipe działa. Uruchamiam DiffLocks...", flush=True)
 
 launch_text = launcher.read_text()
