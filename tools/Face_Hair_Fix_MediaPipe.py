@@ -115,8 +115,15 @@ gradio_origin = subprocess.check_output(
 ).strip()
 gradio_routes = Path(gradio_origin).with_name("routes.py")
 route_code = gradio_routes.read_text()
-old_template = 'templates.TemplateResponse(\\n                    template,\\n                    {"request": request, "config": config},\\n                )'
-new_template = 'templates.TemplateResponse(\\n                    request=request,\\n                    name=template,\\n                    context={"request": request, "config": config},\\n                )'
+old_template = """templates.TemplateResponse(
+                    template,
+                    {"request": request, "config": config},
+                )"""
+new_template = """templates.TemplateResponse(
+                    request=request,
+                    name=template,
+                    context={"request": request, "config": config},
+                )"""
 if old_template in route_code:
     gradio_routes.write_text(route_code.replace(old_template, new_template, 1))
     print("Gradio 3.50.2: naprawiono TemplateResponse dla nowego Starlette.", flush=True)
